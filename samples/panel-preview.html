@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>AI Review panel preview</title>
+<style>
+  /* Approximate VS Code light-theme variables for standalone preview only. */
+  :root {
+    --vscode-font-family: -apple-system, "Segoe UI", sans-serif;
+    --vscode-font-size: 13px;
+    --vscode-foreground: #2b2b2b;
+    --vscode-sideBar-background: #f3f3f3;
+    --vscode-editor-background: #ffffff;
+    --vscode-panel-border: rgba(0,0,0,0.12);
+    --vscode-toolbar-hoverBackground: rgba(0,0,0,0.08);
+    --vscode-button-background: #0078d4;
+    --vscode-button-foreground: #ffffff;
+    --vscode-button-hoverBackground: #026ec1;
+    --vscode-button-secondaryBackground: #e6e6e6;
+    --vscode-button-secondaryForeground: #2b2b2b;
+    --vscode-button-secondaryHoverBackground: #dadada;
+    --vscode-textLink-foreground: #006ab1;
+    --vscode-textLink-activeForeground: #0a84d6;
+    --vscode-descriptionForeground: #6c6c6c;
+    --vscode-badge-background: #b8b8b8;
+    --vscode-badge-foreground: #1f1f1f;
+    --vscode-list-hoverBackground: rgba(0,0,0,0.06);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 0; width: 340px; font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); color: var(--vscode-foreground); background: var(--vscode-sideBar-background); }
+  .toolbar { position: sticky; top: 0; z-index: 2; padding: 10px 10px 8px; background: var(--vscode-sideBar-background); border-bottom: 1px solid var(--vscode-panel-border); }
+  .tree-actions { display: flex; justify-content: flex-end; gap: 4px; margin-bottom: 8px; }
+  .tree-actions button { display: inline-flex; align-items: center; gap: 4px; background: transparent; color: var(--vscode-foreground); border: 1px solid transparent; border-radius: 4px; padding: 2px 6px; font-size: 11px; cursor: pointer; opacity: 0.85; }
+  .tree-actions button:hover { background: var(--vscode-toolbar-hoverBackground); opacity: 1; }
+  .big-buttons { display: flex; gap: 8px; }
+  button.big { flex: 1 1 0; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 8px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
+  button.big.secondary { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); }
+  button.big:hover { background: var(--vscode-button-hoverBackground); }
+  button.big.secondary:hover { background: var(--vscode-button-secondaryHoverBackground); }
+  button.big svg { width: 16px; height: 16px; flex: 0 0 auto; }
+  .clear-row { text-align: center; margin-top: 8px; }
+  button.link { background: none; border: none; color: var(--vscode-textLink-foreground); cursor: pointer; font-size: 11px; text-decoration: underline; padding: 2px 6px; }
+  #content { padding: 4px 0 16px; }
+  details.file { border-bottom: 1px solid var(--vscode-panel-border); }
+  details.file > summary { list-style: none; cursor: pointer; padding: 8px 10px; font-weight: 600; display: flex; align-items: center; gap: 6px; user-select: none; }
+  details.file > summary::-webkit-details-marker { display: none; }
+  .twisty { transition: transform 0.12s ease; opacity: 0.7; }
+  details[open] > summary .twisty { transform: rotate(90deg); }
+  .count { margin-left: auto; font-weight: 400; font-size: 11px; color: var(--vscode-descriptionForeground); }
+  details.thread { margin: 0 0 2px 14px; }
+  details.thread > summary { list-style: none; cursor: pointer; padding: 5px 10px 5px 6px; display: flex; align-items: center; gap: 6px; border-radius: 4px; user-select: none; }
+  details.thread > summary::-webkit-details-marker { display: none; }
+  details.thread > summary:hover { background: var(--vscode-list-hoverBackground); }
+  .line-badge { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 10px; background: var(--vscode-badge-background); color: var(--vscode-badge-foreground); flex: 0 0 auto; }
+  .line-text { color: var(--vscode-descriptionForeground); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-style: italic; }
+  .jump { margin-left: auto; background: transparent; border: none; color: var(--vscode-foreground); cursor: pointer; opacity: 0.6; padding: 2px; border-radius: 4px; flex: 0 0 auto; }
+  .jump:hover { opacity: 1; background: var(--vscode-toolbar-hoverBackground); }
+  .comments { padding: 2px 10px 8px 22px; }
+  .comment { padding: 6px 8px; border-left: 2px solid var(--vscode-panel-border); margin: 4px 0; }
+  .comment.reply { margin-left: 16px; border-left-color: var(--vscode-textLink-foreground); }
+  .comment .author { font-size: 11px; font-weight: 600; color: var(--vscode-foreground); display: flex; align-items: center; gap: 6px; }
+  .comment .reply-tag { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; padding: 0 5px; border-radius: 8px; background: var(--vscode-textLink-foreground); color: #fff; }
+  .comment .body { margin-top: 3px; font-size: 12px; line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
+</style>
+</head>
+<body>
+  <div class="toolbar">
+    <div class="tree-actions">
+      <button id="expandAll">Expand all</button>
+      <button id="collapseAll">Collapse all</button>
+    </div>
+    <div class="big-buttons">
+      <button class="big" id="copy">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M10 1H4a2 2 0 0 0-2 2v8h1.5V3a.5.5 0 0 1 .5-.5h6V1Zm2 2H6.5A1.5 1.5 0 0 0 5 4.5v9A1.5 1.5 0 0 0 6.5 15H12a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 12 3Zm0 10.5H6.5v-9H12v9Z"/></svg>
+        Copy Review
+      </button>
+      <button class="big secondary" id="save">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M3 2h8.5L14 4.5V13a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1Zm1.5 1.5v3h5v-3h-5ZM4 9v3.5h8V9H4Z"/></svg>
+        Save to file
+      </button>
+    </div>
+    <div class="clear-row">
+      <button class="link" id="clear">Clear all comments</button>
+    </div>
+  </div>
+  <div id="content"></div>
+
+<script>
+  const content = document.getElementById('content');
+  const twisty = '<svg class="twisty" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M6 4l4 4-4 4V4z"/></svg>';
+  const jumpIcon = '<svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M9 2v1.5h2.44L6 8.94 7.06 10 12.5 4.56V7H14V2H9zM12 13H3V4h4V2.5H3A1.5 1.5 0 0 0 1.5 4v9A1.5 1.5 0 0 0 3 14.5h9A1.5 1.5 0 0 0 13.5 13V9H12v4z"/></svg>';
+  function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+  function render(files){
+    content.innerHTML='';
+    for(const file of files){
+      const fileEl=document.createElement('details');fileEl.className='file';fileEl.open=true;
+      const count=file.threads.reduce((m,t)=>m+t.comments.length,0);
+      const summary=document.createElement('summary');
+      summary.innerHTML=twisty+'<span>'+esc(file.label)+'</span><span class="count">'+count+(count===1?' comment':' comments')+'</span>';
+      fileEl.appendChild(summary);
+      for(const thread of file.threads){
+        const threadEl=document.createElement('details');threadEl.className='thread';threadEl.open=true;
+        const tSummary=document.createElement('summary');
+        tSummary.innerHTML=twisty+'<span class="line-badge">Line '+(thread.line+1)+'</span><span class="line-text">'+esc(thread.lineText||'')+'</span><button class="jump">'+jumpIcon+'</button>';
+        threadEl.appendChild(tSummary);
+        const commentsEl=document.createElement('div');commentsEl.className='comments';
+        for(const c of thread.comments){
+          const cEl=document.createElement('div');cEl.className='comment'+(c.isReply?' reply':'');
+          const tag=c.isReply?'<span class="reply-tag">reply</span>':'';
+          cEl.innerHTML='<div class="author">'+esc(c.author)+tag+'</div><div class="body">'+esc(c.body)+'</div>';
+          commentsEl.appendChild(cEl);
+        }
+        threadEl.appendChild(commentsEl);fileEl.appendChild(threadEl);
+      }
+      content.appendChild(fileEl);
+    }
+  }
+  function setAllOpen(o){document.querySelectorAll('#content details').forEach(d=>d.open=o);}
+  document.getElementById('expandAll').addEventListener('click',()=>setAllOpen(true));
+  document.getElementById('collapseAll').addEventListener('click',()=>setAllOpen(false));
+  render([{ label:'samples/rich-sample.md', threads:[
+    { line:121, lineText:'## Oversized Table', comments:[{author:'Reviewer',body:'final comments',isReply:false}]},
+    { line:128, lineText:'> [!WARNING]', comments:[
+      {author:'Reviewer',body:'first comment',isReply:false},
+      {author:'Reviewer',body:'reply to first',isReply:true}
+    ]}
+  ]}]);
+</script>
+</body>
+</html>
