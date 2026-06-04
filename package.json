@@ -2,7 +2,7 @@
   "name": "md-ai-reviewer",
   "displayName": "Markdown AI Reviewer",
   "description": "Custom Markdown preview styling and line-by-line AI review comments for Markdown files.",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "publisher": "local",
   "license": "MIT",
   "repository": {

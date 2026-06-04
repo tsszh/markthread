@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.13
+
+- Fixed the Markdown preview table of contents (and its toggle icon) intermittently not appearing, most notably with `Ctrl+Shift+V` and in WSL2/remote windows. The TOC was built only once, synchronously, before the VS Code preview injected the rendered HTML, so it found no headings and never retried; preview re-renders could also wipe it. The TOC now rebuilds reactively via a debounced `MutationObserver` and is idempotent (a heading signature avoids duplicate work and flicker).
+
 ## 0.1.12
 
 - Fixed a recurring bug where the comments side panel would blank out while the comment text box was focused. The comment input is itself a markdown-language editor, so the active-editor tracker now requires a real `file`-scheme document before switching the panel's target file.

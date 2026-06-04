@@ -16,10 +16,6 @@
   }
 
   function build() {
-    if (document.querySelector('.md-toc')) {
-      return;
-    }
-
     var body = document.querySelector('.markdown-body') || document.body;
     var headings = body.querySelectorAll('h1, h2, h3, h4, h5, h6');
     var items = [];
@@ -52,12 +48,32 @@
       return;
     }
 
+    // Skip work if an up-to-date TOC already exists; otherwise drop any stale or
+    // partially-rendered TOC so the rebuild reflects the current headings exactly.
+    var sig = items
+      .map(function (item) {
+        return item.level + ':' + item.text;
+      })
+      .join('|');
+    var existingNav = document.querySelector('.md-toc');
+    if (existingNav && existingNav.getAttribute('data-md-toc-sig') === sig) {
+      return;
+    }
+    if (existingNav) {
+      existingNav.remove();
+    }
+    var existingToggle = document.querySelector('.md-toc-toggle');
+    if (existingToggle) {
+      existingToggle.remove();
+    }
+
     var minLevel = items.reduce(function (min, item) {
       return Math.min(min, item.level);
     }, 6);
 
     var nav = document.createElement('nav');
     nav.className = 'md-toc';
+    nav.setAttribute('data-md-toc-sig', sig);
 
     var title = document.createElement('div');
     title.className = 'md-toc-title';
@@ -118,9 +134,35 @@
     onScroll();
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', build);
+  // The VS Code Markdown preview injects the rendered HTML AFTER preview scripts
+  // evaluate (readyState is already past "loading") and replaces the body content
+  // on every update. A one-shot build therefore runs against an empty document and
+  // never recovers. Build now, then rebuild (debounced) whenever the body changes.
+  var rebuildTimer = null;
+  function scheduleBuild() {
+    if (rebuildTimer) {
+      return;
+    }
+    rebuildTimer = setTimeout(function () {
+      rebuildTimer = null;
+      build();
+    }, 80);
+  }
+
+  function watchForContent() {
+    if (!document.body) {
+      return;
+    }
+    new MutationObserver(scheduleBuild).observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
+  }
+
+  build();
+  if (document.body) {
+    watchForContent();
   } else {
-    build();
+    document.addEventListener('DOMContentLoaded', watchForContent);
   }
 })();
