@@ -1,0 +1,74 @@
+name: Release
+
+# Auto-release on version bump: every push to main is checked, and a new GitHub
+# Release (with the built .vsix attached) is created only when package.json's
+# version does not yet have a matching `v<version>` tag/release. No manual
+# tagging and no marketplace account/secrets are required. The tag is created
+# automatically by the release step at the pushed commit.
+on:
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history + tags so we can detect whether this version was already released.
+          fetch-depth: 0
+          fetch-tags: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Decide whether this version needs releasing
+        id: guard
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          TAG="v$VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "Tag $TAG already exists -> version not bumped, skipping release."
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Tag $TAG not found -> version bumped, will build and release."
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install dependencies
+        if: steps.guard.outputs.should_release == 'true'
+        run: npm ci
+
+      - name: Lint
+        if: steps.guard.outputs.should_release == 'true'
+        run: npm run lint
+
+      - name: Test
+        if: steps.guard.outputs.should_release == 'true'
+        run: xvfb-run -a npm test
+
+      - name: Package VSIX
+        if: steps.guard.outputs.should_release == 'true'
+        run: npm run package
+
+      - name: Create GitHub Release and upload VSIX
+        if: steps.guard.outputs.should_release == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.guard.outputs.tag }}
+          name: ${{ steps.guard.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          files: '*.vsix'
+          generate_release_notes: true
+          fail_on_unmatched_files: true
