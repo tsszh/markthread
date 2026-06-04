@@ -1,0 +1,223 @@
+{
+  "name": "md-ai-reviewer",
+  "displayName": "Markdown AI Reviewer",
+  "description": "Custom Markdown preview styling and line-by-line AI review comments for Markdown files.",
+  "version": "0.1.12",
+  "publisher": "local",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/songz/md-ai-reviewer.git"
+  },
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:markdown"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "markdown.previewStyles": [
+      "./media/markdown-preview.css"
+    ],
+    "markdown.previewScripts": [
+      "./media/toc.js"
+    ],
+    "commands": [
+      {
+        "command": "md-ai-reviewer.copyToClipboard",
+        "title": "Copy AI Review to Clipboard",
+        "category": "Markdown AI Reviewer",
+        "icon": "$(clippy)"
+      },
+      {
+        "command": "md-ai-reviewer.saveToFile",
+        "title": "Save AI Review Comments to File",
+        "category": "Markdown AI Reviewer",
+        "icon": "$(save)"
+      },
+      {
+        "command": "md-ai-reviewer.loadFromFile",
+        "title": "Load AI Review Comments from File",
+        "category": "Markdown AI Reviewer",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "md-ai-reviewer.clearAll",
+        "title": "Clear All AI Review Comments",
+        "category": "Markdown AI Reviewer",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "md-ai-reviewer.revealComment",
+        "title": "Reveal Review Comment",
+        "category": "Markdown AI Reviewer"
+      },
+      {
+        "command": "md-ai-reviewer.createComment",
+        "title": "Add Review Comment",
+        "category": "Markdown AI Reviewer",
+        "enablement": "!commentIsEmpty"
+      },
+      {
+        "command": "md-ai-reviewer.replyComment",
+        "title": "Reply",
+        "category": "Markdown AI Reviewer",
+        "enablement": "!commentIsEmpty"
+      },
+      {
+        "command": "md-ai-reviewer.deleteComment",
+        "title": "Delete Comment",
+        "category": "Markdown AI Reviewer",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "md-ai-reviewer.deleteThread",
+        "title": "Delete Thread",
+        "category": "Markdown AI Reviewer",
+        "icon": "$(trash)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "md-ai-reviewer",
+          "title": "AI Review",
+          "icon": "media/review-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "md-ai-reviewer": [
+        {
+          "id": "md-ai-reviewer.commentsView",
+          "name": "Review Comments",
+          "type": "webview",
+          "icon": "media/review-icon.svg",
+          "contextualTitle": "AI Review"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "key": "enter",
+        "command": "md-ai-reviewer.submit",
+        "when": "commentEditorFocused && !suggestWidgetVisible"
+      },
+      {
+        "key": "ctrl+enter",
+        "mac": "cmd+enter",
+        "command": "md-ai-reviewer.submit",
+        "when": "commentEditorFocused"
+      },
+      {
+        "key": "alt+enter",
+        "command": "md-ai-reviewer.submit",
+        "when": "commentEditorFocused"
+      },
+      {
+        "key": "shift+enter",
+        "command": "type",
+        "args": { "text": "\n" },
+        "when": "commentEditorFocused"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "md-ai-reviewer.copyToClipboard",
+          "when": "editorLangId == markdown"
+        },
+        {
+          "command": "md-ai-reviewer.saveToFile",
+          "when": "editorLangId == markdown"
+        },
+        {
+          "command": "md-ai-reviewer.loadFromFile",
+          "when": "editorLangId == markdown"
+        },
+        {
+          "command": "md-ai-reviewer.clearAll",
+          "when": "editorLangId == markdown"
+        },
+        {
+          "command": "md-ai-reviewer.createComment",
+          "when": "false"
+        },
+        {
+          "command": "md-ai-reviewer.replyComment",
+          "when": "false"
+        },
+        {
+          "command": "md-ai-reviewer.deleteComment",
+          "when": "false"
+        },
+        {
+          "command": "md-ai-reviewer.deleteThread",
+          "when": "false"
+        },
+        {
+          "command": "md-ai-reviewer.revealComment",
+          "when": "false"
+        }
+      ],
+      "comments/commentThread/context": [
+        {
+          "command": "md-ai-reviewer.createComment",
+          "group": "inline@1",
+          "when": "commentController == md-ai-reviewer && commentThreadIsEmpty"
+        },
+        {
+          "command": "md-ai-reviewer.replyComment",
+          "group": "inline@1",
+          "when": "commentController == md-ai-reviewer && !commentThreadIsEmpty"
+        }
+      ],
+      "comments/commentThread/title": [
+        {
+          "command": "md-ai-reviewer.deleteThread",
+          "group": "navigation@1",
+          "when": "commentController == md-ai-reviewer"
+        }
+      ],
+      "comments/comment/title": [
+        {
+          "command": "md-ai-reviewer.deleteComment",
+          "group": "inline@1",
+          "when": "commentController == md-ai-reviewer"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "compile": "node esbuild.js && tsc -p tsconfig.test.json",
+    "watch": "node esbuild.js --watch",
+    "lint": "eslint src",
+    "test": "npm run compile && vscode-test",
+    "preview": "node scripts/preview-server.mjs",
+    "package": "npm run compile && vsce package --no-dependencies",
+    "vscode:prepublish": "npm run compile"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.22.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.13.10",
+    "@types/vscode": "^1.75.0",
+    "@typescript-eslint/eslint-plugin": "^8.26.1",
+    "@typescript-eslint/parser": "^8.26.1",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.4.1",
+    "@vscode/vsce": "^3.3.2",
+    "esbuild": "^0.25.1",
+    "eslint": "^9.22.0",
+    "markdown-it": "^14.1.0",
+    "markdown-it-front-matter": "^0.2.4",
+    "markdown-it-github-alerts": "^0.3.1",
+    "mocha": "^11.1.0",
+    "typescript": "^5.8.2",
+    "typescript-eslint": "^8.26.1"
+  }
+}
