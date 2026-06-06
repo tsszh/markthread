@@ -13,6 +13,19 @@ tags:
 aliases:
   - rich-sample
   - component-gallery
+references:
+  - https://github.com/microsoft/vscode/blob/main/extensions/markdown-language-features/src/preview/preview.ts
+  - https://code.visualstudio.com/api/extension-guides/webview-views
+  - https://developer.mozilla.org/en-US/docs/Web/CSS/overflow-wrap
+homepage: https://github.com/songz/md-ai-reviewer/blob/main/README.md
+description: >
+  A long, folded multi-line description used to verify how the properties
+  renderer handles block scalars that wrap across several source lines
+  instead of collapsing or dropping the continuation lines.
+notes: |
+  Literal block scalar.
+  Line two keeps its own line.
+inline_tags: [markdown, preview, frontmatter]
 ---
 
 # Rich Component Sample

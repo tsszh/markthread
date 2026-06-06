@@ -2,7 +2,7 @@
   "name": "md-ai-reviewer",
   "displayName": "Markdown AI Reviewer",
   "description": "Custom Markdown preview styling and line-by-line AI review comments for Markdown files.",
-  "version": "0.1.13",
+  "version": "0.1.16",
   "publisher": "local",
   "license": "MIT",
   "repository": {
@@ -121,7 +121,9 @@
       {
         "key": "shift+enter",
         "command": "type",
-        "args": { "text": "\n" },
+        "args": {
+          "text": "\n"
+        },
         "when": "commentEditorFocused"
       }
     ],
@@ -213,11 +215,13 @@
     "@vscode/vsce": "^3.3.2",
     "esbuild": "^0.25.1",
     "eslint": "^9.22.0",
+    "highlight.js": "^11.11.1",
     "markdown-it": "^14.1.0",
     "markdown-it-front-matter": "^0.2.4",
     "markdown-it-github-alerts": "^0.3.1",
     "mocha": "^11.1.0",
     "typescript": "^5.8.2",
-    "typescript-eslint": "^8.26.1"
+    "typescript-eslint": "^8.26.1",
+    "yaml": "^2.9.0"
   }
 }

@@ -5,6 +5,8 @@ import { fileURLToPath } from 'node:url';
 import MarkdownIt from 'markdown-it';
 import markdownItGithubAlerts from 'markdown-it-github-alerts';
 import frontMatter from 'markdown-it-front-matter';
+import hljs from 'highlight.js';
+import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, '..');
@@ -13,7 +15,25 @@ const port = Number(process.env.PORT ?? 4173);
 
 let frontMatterRaw = '';
 
-const md = new MarkdownIt({ html: true, linkify: true, typographer: true });
+const md = new MarkdownIt({
+  html: true,
+  linkify: true,
+  typographer: true,
+  // Mirror the VS Code built-in Markdown preview, which highlights with
+  // highlight.js and emits `hljs-*` token classes (styled in markdown-preview.css).
+  highlight: (str, lang) => {
+    const escaped = md.utils.escapeHtml(str);
+    if (lang && hljs.getLanguage(lang)) {
+      try {
+        const out = hljs.highlight(str, { language: lang, ignoreIllegals: true }).value;
+        return `<pre class="hljs"><code class="hljs language-${lang}">${out}</code></pre>`;
+      } catch {
+        /* fall through to plain escaped output */
+      }
+    }
+    return `<pre class="hljs"><code class="hljs">${escaped}</code></pre>`;
+  },
+});
 md.use(markdownItGithubAlerts);
 md.use(frontMatter, (fm) => {
   frontMatterRaw = fm;
@@ -30,100 +50,70 @@ md.renderer.rules.fence = (tokens, idx, options, env, self) => {
   return defaultFence(tokens, idx, options, env, self);
 };
 
-/** Minimal YAML frontmatter parser: top-level `key: value` and `- item` lists. */
-function parseFrontMatter(raw) {
-  const entries = [];
-  let current = null;
-
-  for (const line of raw.split(/\r?\n/)) {
-    if (!line.trim()) {
-      continue;
-    }
-
-    const listMatch = line.match(/^\s*-\s+(.*)$/);
-    if (listMatch && current) {
-      current.items.push(listMatch[1].trim());
-      continue;
-    }
-
-    const kvMatch = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
-    if (kvMatch) {
-      const [, key, value] = kvMatch;
-      current = { key, value: value.trim(), items: [] };
-      entries.push(current);
-    }
+/*
+ * Frontmatter rendering deliberately mirrors VS Code's built-in preview
+ * (extensions/markdown-language-features yamlPreamble): YAML is parsed with the
+ * `yaml` package and rendered as `<table class="frontmatter">` with `<th>`/`<td>`
+ * rows, arrays as `<ul><li>`, and nested objects as a `<code>` YAML block. The
+ * shared styling/URL-linkifying lives in media/markdown-preview.css + media/toc.js,
+ * so the local preview faithfully reflects what ships in the extension.
+ */
+function formatScalar(value) {
+  if (value instanceof Date) {
+    return value.toISOString();
   }
+  return String(value);
+}
 
-  return entries;
+function formatValueHtml(value) {
+  if (value === null || value === undefined) {
+    return '';
+  }
+  if (Array.isArray(value)) {
+    if (!value.length) {
+      return '';
+    }
+    return `<ul>${value.map((v) => `<li>${formatValueHtml(v)}</li>`).join('')}</ul>`;
+  }
+  if (typeof value === 'object') {
+    return `<code>${md.utils.escapeHtml(stringifyYaml(value).trimEnd())}</code>`;
+  }
+  return md.utils.escapeHtml(formatScalar(value));
 }
 
 function renderFrontMatter(raw) {
-  const entries = parseFrontMatter(raw);
-  if (entries.length === 0) {
+  let parsed;
+  try {
+    parsed = parseYaml(raw);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return `<div class="frontmatter-error" role="alert"><strong>Failed to parse frontmatter</strong><pre>${md.utils.escapeHtml(message)}</pre></div>`;
+  }
+
+  if (parsed === null || parsed === undefined) {
+    return '';
+  }
+
+  const entries =
+    typeof parsed !== 'object' || Array.isArray(parsed)
+      ? [['', parsed]]
+      : Object.entries(parsed);
+
+  if (!entries.length) {
     return '';
   }
 
   const rows = entries
-    .map((entry) => {
-      let valueHtml;
-      if (entry.items.length > 0) {
-        valueHtml = entry.items
-          .map((item) => `<span class="fm-tag">${md.utils.escapeHtml(item)}</span>`)
-          .join(' ');
-      } else {
-        valueHtml = `<span class="fm-value">${md.utils.escapeHtml(entry.value)}</span>`;
-      }
-      return `<tr><td class="fm-key">${md.utils.escapeHtml(entry.key)}</td><td>${valueHtml}</td></tr>`;
-    })
-    .join('\n');
+    .map(([key, value]) => `<tr><th>${md.utils.escapeHtml(key)}</th><td>${formatValueHtml(value)}</td></tr>`)
+    .join('');
 
-  return `<table class="frontmatter-properties"><tbody>${rows}</tbody></table>`;
+  return `<table class="frontmatter" title="Frontmatter"><tbody>${rows}</tbody></table>`;
 }
 
 const frontMatterStyles = `
-.frontmatter-properties {
-  width: 100% !important;
-  display: table !important;
-  border-collapse: separate !important;
-  border-spacing: 0 !important;
-  margin: 0 0 2rem !important;
-  background: #ffffff !important;
-  border: 1px solid #e4e7ec !important;
-  border-radius: 10px !important;
-  box-shadow: 0 1px 2px rgba(16,24,40,0.04), 0 4px 16px rgba(16,24,40,0.06) !important;
-  overflow: hidden !important;
-  font-size: 0.9rem !important;
-}
-.frontmatter-properties td {
-  padding: 9px 16px !important;
-  border-bottom: 1px solid #eef0f3 !important;
-  vertical-align: top !important;
-}
-.frontmatter-properties tr:last-child td { border-bottom: none !important; }
-.frontmatter-properties .fm-key {
-  width: 180px !important;
-  color: #6b7480 !important;
-  font-weight: 600 !important;
-  white-space: nowrap !important;
-}
-.frontmatter-properties .fm-value { color: #2b3340 !important; }
-.frontmatter-properties .fm-tag {
-  display: inline-block !important;
-  background: #eaf0fd !important;
-  color: #2f5bd0 !important;
-  border-radius: 999px !important;
-  padding: 2px 10px !important;
-  margin: 2px 2px !important;
-  font-size: 0.8rem !important;
-  font-weight: 500 !important;
-}
-.pre-properties-label {
-  font-size: 0.75rem !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.08em !important;
-  color: #9aa1ac !important;
-  margin: 0 0 0.5rem !important;
-}
+/* Frontmatter "Properties" table styling lives in media/markdown-preview.css
+   (it targets VS Code's native table.frontmatter markup, which this server now
+   mirrors). Only standalone-preview tweaks remain here. */
 
 /* markdown-it-github-alerts ships octicon SVGs whose fill defaults to black.
    Make each alert title icon inherit the title's color and align it nicely. */
@@ -147,9 +137,7 @@ function renderPage() {
   const previewCss = readFileSync(join(rootDir, 'media', 'markdown-preview.css'), 'utf8');
   const tocScript = readFileSync(join(rootDir, 'media', 'toc.js'), 'utf8');
   const bodyHtml = md.render(sampleMarkdown);
-  const propertiesHtml = frontMatterRaw
-    ? `<p class="pre-properties-label">Properties</p>${renderFrontMatter(frontMatterRaw)}`
-    : '';
+  const propertiesHtml = frontMatterRaw ? renderFrontMatter(frontMatterRaw) : '';
 
   return `<!DOCTYPE html>
 <html lang="en">

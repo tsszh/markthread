@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.16
+
+- Fixed the frontmatter Properties table squeezing values to one character per line in narrow preview panes. The key column used a fixed `table-layout` with a hard 200px width; it now uses an auto layout where the key column shrinks to its content and the value column takes the remaining width (long URLs still wrap instead of overflowing).
+
+## 0.1.15
+
+- Styled the Markdown preview's YAML frontmatter **Properties** table. VS Code's built-in preview already renders frontmatter as `table.frontmatter` (parsed with a real YAML library, so multi-line block scalars, lists, and inline arrays are handled correctly); the extension now themes that table (card styling, key column, list/code values) and, via the preview script, adds a "Properties" label and turns bare URLs into clickable links that wrap instead of overflowing the page. The local preview server now emits the same `table.frontmatter` markup (using the `yaml` parser) so it faithfully mirrors the shipped preview.
+- Note: clicking task-list checkboxes to write back to the source is **not** supported by VS Code's built-in Markdown preview and cannot be added through the contributed preview-script/style API (the preview webview only accepts a fixed set of messages and does not execute `command:` links), so it was intentionally left out.
+
+## 0.1.14
+
+- Markdown preview code blocks now show proper language syntax highlighting. The custom stylesheet previously flattened all tokens to a single color (`pre code { color: inherit }`); it now styles the `hljs-*` token classes emitted by highlight.js (used by both the VS Code built-in preview and the local preview server) with a dark-friendly palette.
+- Mermaid diagrams no longer get the dark code-block background. The dark `pre` chrome is now scoped to `pre:not(.mermaid)`, and `pre.mermaid` is transparent/centered so the diagram keeps mermaid's own theme.
+- Preview view fixes: removed the global smooth-scroll that fought the editor/preview scroll sync (fast scrolling no longer bounces back), the content width now grows with the window instead of a fixed 960px cap, and the TOC opener is always available with click-outside-to-dismiss.
+
 ## 0.1.13
 
 - Fixed the Markdown preview table of contents (and its toggle icon) intermittently not appearing, most notably with `Ctrl+Shift+V` and in WSL2/remote windows. The TOC was built only once, synchronously, before the VS Code preview injected the rendered HTML, so it found no headings and never retried; preview re-renders could also wipe it. The TOC now rebuilds reactively via a debounced `MutationObserver` and is idempotent (a heading signature avoids duplicate work and flicker).

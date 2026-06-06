@@ -58,7 +58,9 @@ body,
   font-size: 16px !important;
   line-height: 1.75 !important;
   letter-spacing: 0.005em !important;
-  max-width: 960px !important;
+  /* Grow with the window instead of a hard cap. Keep comfortable side gutters;
+     when the floating TOC is visible, extra right-side room is reserved below. */
+  max-width: 90% !important;
   margin: 0 auto !important;
   padding: 2.5rem 2.75rem 4rem !important;
   -webkit-font-smoothing: antialiased !important;
@@ -243,6 +245,92 @@ blockquote strong { color: var(--text-strong) !important; }
 .markdown-alert-caution > .markdown-alert-title { color: #b91c1c !important; }
 
 /* --------------------------------------------------------------------------
+   Frontmatter "Properties" table
+   VS Code's built-in preview renders YAML frontmatter as `table.frontmatter`
+   (rows of <th>key</th><td>value</td>, arrays as <ul>, objects as <code>).
+   The local preview server mirrors that markup, so this styles both. A
+   "Properties" label and URL linkifying are added by media/toc.js.
+   -------------------------------------------------------------------------- */
+
+.md-frontmatter-label {
+  font-size: 0.7rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  color: var(--text-muted) !important;
+  font-weight: 700 !important;
+  margin: 0.5rem 0 0.5rem 2px !important;
+}
+
+table.frontmatter {
+  /* Auto layout so the key column shrinks to its content and the value column
+     takes the rest. A fixed layout with a hard key width squeezes values to
+     one-character-per-line in narrow preview panes. */
+  display: table !important;
+  width: 100% !important;
+  table-layout: auto !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  margin: 0 0 2rem !important;
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-card) !important;
+  overflow: hidden !important;
+  font-size: 0.9rem !important;
+}
+table.frontmatter th,
+table.frontmatter td {
+  padding: 9px 16px !important;
+  border-bottom: 1px solid #eef0f3 !important;
+  vertical-align: top !important;
+  text-align: left !important;
+  background: transparent !important;
+}
+table.frontmatter tr:last-child th,
+table.frontmatter tr:last-child td { border-bottom: none !important; }
+table.frontmatter tr:hover th,
+table.frontmatter tr:hover td { background: transparent !important; }
+table.frontmatter th {
+  /* `width: 1%` + nowrap collapses the key column to its text width. */
+  width: 1% !important;
+  max-width: 220px !important;
+  color: var(--text-muted) !important;
+  font-weight: 600 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+/* Long unbreakable values (URLs) must wrap instead of widening the table. */
+table.frontmatter td {
+  color: var(--text-body) !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+}
+table.frontmatter td a {
+  color: var(--accent) !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+}
+table.frontmatter ul { margin: 0 !important; padding-left: 1.1rem !important; }
+table.frontmatter ul li { margin: 2px 0 !important; }
+table.frontmatter code {
+  background: var(--code-bg) !important;
+  color: var(--text-body) !important;
+  border: none !important;
+  padding: 0 !important;
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+}
+.frontmatter-error {
+  margin: 0 0 2rem !important;
+  padding: 0.85rem 1.1rem !important;
+  border: 1px solid #f3c0c0 !important;
+  border-radius: var(--radius-sm) !important;
+  background: #fdecec !important;
+  color: #b3306b !important;
+}
+
+/* --------------------------------------------------------------------------
    Code
    -------------------------------------------------------------------------- */
 
@@ -262,8 +350,8 @@ p > code, li > code, td > code, blockquote > p > code, h1 > code, h2 > code, h3 
   word-break: keep-all !important;
 }
 
-/* Code blocks */
-pre {
+/* Code blocks (exclude mermaid: it owns its own theme/background) */
+pre:not(.mermaid) {
   background: #1f2430 !important;
   color: #e6e9ef !important;
   border: 1px solid #2a3040 !important;
@@ -274,7 +362,7 @@ pre {
   margin: 1.4rem 0 !important;
 }
 
-pre code {
+pre:not(.mermaid) code {
   background: none !important;
   color: inherit !important;
   border: none !important;
@@ -282,6 +370,62 @@ pre code {
   white-space: pre !important;
   font-size: 0.85rem !important;
 }
+
+/* Syntax highlighting tokens.
+   Highlight.js is the highlighter used by both the VS Code built-in Markdown
+   preview and our local preview server (markdown-it `highlight` option), so the
+   same `.hljs-*` class names are colored here for a consistent dark palette. */
+.hljs-comment,
+.hljs-quote { color: #7c8493 !important; font-style: italic !important; }
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-doctag,
+.hljs-name { color: #c792ea !important; }
+.hljs-string,
+.hljs-regexp,
+.hljs-addition,
+.hljs-meta-string { color: #c3e88d !important; }
+.hljs-number,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-link { color: #f78c6c !important; }
+.hljs-title,
+.hljs-section,
+.hljs-title.function_,
+.hljs-built_in { color: #82aaff !important; }
+.hljs-class .hljs-title,
+.hljs-type,
+.hljs-attr,
+.hljs-attribute,
+.hljs-variable.constant_ { color: #ffcb6b !important; }
+.hljs-property,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-params { color: #e6e9ef !important; }
+.hljs-tag { color: #89ddff !important; }
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-selector-attr,
+.hljs-selector-pseudo { color: #ffcb6b !important; }
+.hljs-meta,
+.hljs-comment.hljs-doctag { color: #82aaff !important; }
+.hljs-deletion { color: #f07178 !important; }
+.hljs-emphasis { font-style: italic !important; }
+.hljs-strong { font-weight: 700 !important; }
+
+/* Mermaid: drop the dark code-block chrome so the diagram keeps mermaid's own
+   theme. The diagram is centered; mermaid renders an <svg> inside this <pre>. */
+pre.mermaid {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 1.4rem 0 !important;
+  text-align: center !important;
+  overflow-x: auto !important;
+  line-height: normal !important;
+}
+pre.mermaid > svg { max-width: 100% !important; height: auto !important; }
 
 /* --------------------------------------------------------------------------
    Lists
@@ -359,7 +503,10 @@ img {
 /* ==========================================================================
    Floating table of contents (injected by media/toc.js)
    ========================================================================== */
-html { scroll-behavior: smooth; }
+/* NOTE: no global `scroll-behavior: smooth` here. In the VS Code side preview it
+   fights the editor<->preview scroll sync (each synced scrollTo animates), which
+   makes fast scrolling stutter and bounce back. Smooth scrolling for TOC clicks
+   is handled explicitly in toc.js via scrollIntoView({ behavior: 'smooth' }). */
 
 .md-toc {
   position: fixed !important;
@@ -375,6 +522,7 @@ html { scroll-behavior: smooth; }
   padding: 12px 12px !important;
   font-size: 0.85rem !important;
   z-index: 9999 !important;
+  transition: transform 0.2s ease !important;
 }
 .md-toc-title {
   font-size: 0.7rem !important;
@@ -414,30 +562,39 @@ html { scroll-behavior: smooth; }
 .md-toc-l3 a { padding-left: 44px !important; opacity: 0.92 !important; }
 .md-toc-l4 a, .md-toc-l5 a { padding-left: 56px !important; opacity: 0.82 !important; }
 
-.md-toc-toggle { display: none !important; }
-
-@media (max-width: 1180px) {
-  .md-toc {
-    transform: translateX(118%) !important;
-    transition: transform 0.2s ease !important;
-  }
-  .md-toc.open { transform: none !important; }
-  .md-toc-toggle {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    position: fixed !important;
-    top: 14px !important;
-    right: 14px !important;
-    z-index: 10000 !important;
-    width: 38px !important;
-    height: 38px !important;
-    border-radius: 8px !important;
-    border: 1px solid var(--border, #e4e7ec) !important;
-    background: var(--bg-card, #ffffff) !important;
-    color: var(--text-muted, #5a6472) !important;
-    cursor: pointer !important;
-    font-size: 16px !important;
-    box-shadow: 0 2px 8px rgba(16, 24, 40, 0.10) !important;
-  }
+/* Toggle button is ALWAYS available so the TOC can be hidden/shown at any width. */
+.md-toc-toggle {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: fixed !important;
+  top: 14px !important;
+  right: 14px !important;
+  z-index: 10000 !important;
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 8px !important;
+  border: 1px solid var(--border, #e4e7ec) !important;
+  background: var(--bg-card, #ffffff) !important;
+  color: var(--text-muted, #5a6472) !important;
+  cursor: pointer !important;
+  font-size: 16px !important;
+  line-height: 1 !important;
+  box-shadow: 0 2px 8px rgba(16, 24, 40, 0.10) !important;
+  transition: background 0.15s ease, color 0.15s ease !important;
 }
+.md-toc-toggle:hover {
+  background: var(--bg-hover, #eef4ff) !important;
+  color: var(--accent-strong, #2f5bd0) !important;
+}
+/* While the TOC is open it is visible itself; hide the opener so they never
+   overlap. The TOC is dismissed by clicking anywhere outside of it (see toc.js). */
+body.md-toc-open .md-toc-toggle { display: none !important; }
+
+/* Default visibility follows available width; explicit toggle classes win.
+   The TOC simply floats over the text, so toggling never reflows the content. */
+@media (max-width: 1180px) {
+  .md-toc:not(.is-open) { transform: translateX(130%) !important; }
+}
+.md-toc.is-open { transform: none !important; }
+.md-toc.is-closed { transform: translateX(130%) !important; }
