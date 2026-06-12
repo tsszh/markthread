@@ -1,5 +1,11 @@
 import * as vscode from 'vscode';
 import { MarkdownCommentController, ReviewCommentItem } from './comments';
+import {
+  readSettings,
+  resetSettings,
+  writeSettings,
+  ReviewerSettings,
+} from './settings';
 
 export interface PanelComment {
   author: string;
@@ -56,7 +62,7 @@ export function buildPanelModel(
       (item) => item.uri.toString() === key
     );
     const line = thread.range.start.line;
-    const rawLine = doc ? doc.lineAt(line).text : '';
+    const rawLine = doc && line < doc.lineCount ? doc.lineAt(line).text : '';
     const lineText = rawLine
       .replace(/<!--\s*ai-review[\s\S]*?-->/g, '')
       .trim();
@@ -92,12 +98,21 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
 
   private view?: vscode.WebviewView;
   private activeUri: string | undefined;
+  /** Line of the thread that should render expanded in the panel. */
+  private activeLine: number | undefined;
 
   constructor(
     private readonly extensionUri: vscode.Uri,
     private readonly controller: MarkdownCommentController
   ) {
-    controller.onDidChange(() => this.update());
+    controller.onDidChange(() => {
+      // A just-added/edited comment becomes the active (expanded) thread.
+      const lastActive = controller.lastActive;
+      if (lastActive && lastActive.uri === this.activeUri) {
+        this.activeLine = lastActive.line;
+      }
+      this.update();
+    });
   }
 
   /**
@@ -106,7 +121,19 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
    * panel) never blank the list.
    */
   setActiveUri(uri: string | undefined): void {
+    if (uri !== this.activeUri) {
+      this.activeLine = undefined;
+    }
     this.activeUri = uri;
+    this.update();
+  }
+
+  /** Follows the cursor so the thread under it renders expanded. */
+  setActiveLine(line: number | undefined): void {
+    if (line === this.activeLine) {
+      return;
+    }
+    this.activeLine = line;
     this.update();
   }
 
@@ -120,7 +147,7 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
 
     webviewView.webview.html = this.getHtml(webviewView.webview);
 
-    webviewView.webview.onDidReceiveMessage((message) => {
+    webviewView.webview.onDidReceiveMessage(async (message) => {
       switch (message?.type) {
         case 'copy':
           vscode.commands.executeCommand('md-ai-reviewer.copyToClipboard');
@@ -138,6 +165,13 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
             message.line
           );
           break;
+        case 'quickReply':
+          this.controller.addQuickReply(
+            String(message.uri),
+            Number(message.line),
+            String(message.text ?? '')
+          );
+          break;
         case 'expandThreads':
           this.controller.setAllCollapsibleState(
             vscode.CommentThreadCollapsibleState.Expanded
@@ -147,6 +181,22 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
           this.controller.setAllCollapsibleState(
             vscode.CommentThreadCollapsibleState.Collapsed
           );
+          break;
+        case 'saveSettings':
+          await writeSettings(
+            (message.settings ?? {}) as Partial<ReviewerSettings>
+          );
+          this.update();
+          break;
+        case 'resetSettings':
+          await resetSettings();
+          this.update();
+          // Dedicated message so the open settings form re-populates with the
+          // defaults (regular updates never clobber in-progress form edits).
+          this.view?.webview.postMessage({
+            type: 'settingsReset',
+            settings: readSettings(),
+          });
           break;
         case 'ready':
           this.update();
@@ -179,7 +229,12 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
           (file) => file.uri === this.activeUri
         )
       : [];
-    this.view.webview.postMessage({ type: 'update', files });
+    this.view.webview.postMessage({
+      type: 'update',
+      files,
+      activeLine: this.activeLine ?? null,
+      settings: readSettings(),
+    });
   }
 
   private getHtml(webview: vscode.Webview): string {
@@ -216,10 +271,20 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
   }
   .tree-actions {
     display: flex;
-    justify-content: flex-end;
+    align-items: center;
+    flex-wrap: wrap;
     gap: 4px;
     margin-bottom: 8px;
   }
+  .group-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--vscode-descriptionForeground);
+    margin-right: 2px;
+  }
+  .group-label + .group-label { margin-left: 8px; }
+  .tree-actions .spacer { flex: 1 1 auto; }
   .tree-actions button {
     display: inline-flex;
     align-items: center;
@@ -237,6 +302,15 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
     background: var(--vscode-toolbar-hoverBackground, rgba(128,128,128,0.18));
     opacity: 1;
   }
+  .action-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    border: 1px solid var(--vscode-panel-border, rgba(128,128,128,0.25));
+    border-radius: 4px;
+    padding: 1px 3px;
+  }
+  .action-group + .action-group { margin-left: 6px; }
   .big-buttons {
     display: flex;
     gap: 8px;
@@ -317,6 +391,9 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
   }
   details.thread > summary::-webkit-details-marker { display: none; }
   details.thread > summary:hover { background: var(--vscode-list-hoverBackground, rgba(128,128,128,0.12)); }
+  details.thread.active > summary {
+    background: var(--vscode-list-activeSelectionBackground, rgba(128,128,255,0.14));
+  }
   .line-badge {
     font-size: 10px;
     font-weight: 600;
@@ -380,13 +457,94 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
     white-space: pre-wrap;
     word-break: break-word;
   }
+  .pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 6px;
+  }
+  button.pill {
+    background: var(--vscode-badge-background, #4d4d4d);
+    color: var(--vscode-badge-foreground, #fff);
+    border: none;
+    border-radius: 10px;
+    padding: 2px 10px;
+    font-size: 11px;
+    cursor: pointer;
+    opacity: 0.9;
+  }
+  button.pill:hover { opacity: 1; background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
+  .settings {
+    padding: 10px;
+    border-bottom: 1px solid var(--vscode-panel-border, rgba(128,128,128,0.25));
+    background: var(--vscode-sideBar-background, var(--vscode-editor-background));
+  }
+  .settings h3 {
+    margin: 10px 0 6px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--vscode-descriptionForeground);
+  }
+  .settings h3:first-child { margin-top: 0; }
+  .settings label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    margin: 4px 0;
+    cursor: pointer;
+  }
+  .settings input[type="text"], .settings textarea {
+    width: 100%;
+    background: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
+    border: 1px solid var(--vscode-input-border, rgba(128,128,128,0.35));
+    border-radius: 4px;
+    padding: 4px 6px;
+    font-family: inherit;
+    font-size: 12px;
+  }
+  .settings textarea { resize: vertical; min-height: 80px; }
+  .qr-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin: 4px 0;
+  }
+  .qr-row button {
+    background: transparent;
+    border: none;
+    color: var(--vscode-foreground);
+    cursor: pointer;
+    opacity: 0.7;
+    font-size: 14px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    flex: 0 0 auto;
+  }
+  .qr-row button:hover { opacity: 1; background: var(--vscode-toolbar-hoverBackground, rgba(128,128,128,0.18)); }
+  .settings .row-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .settings .row-actions button.big { padding: 6px 8px; }
 </style>
 </head>
 <body>
   <div class="toolbar">
     <div class="tree-actions">
-      <button id="expandAll" title="Expand all">Expand all</button>
-      <button id="collapseAll" title="Collapse all">Collapse all</button>
+      <span class="group-label">Panel</span>
+      <span class="action-group">
+        <button id="panelExpandAll" title="Expand all threads in this panel">Expand</button>
+        <button id="panelCollapseAll" title="Collapse all threads in this panel">Collapse</button>
+      </span>
+      <span class="group-label">Editor</span>
+      <span class="action-group">
+        <button id="editorExpandAll" title="Expand all comment threads in the Markdown editor">Expand</button>
+        <button id="editorCollapseAll" title="Collapse all comment threads in the Markdown editor">Collapse</button>
+      </span>
+      <span class="spacer"></span>
+      <button id="settingsBtn" title="AI Review settings">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M9.1 4.4 8.6 2H7.4l-.5 2.4-.7.3-2-1.3-.9.8 1.3 2-.2.7-2.4.5v1.2l2.4.5.3.8-1.3 2 .8.8 2-1.3.8.3.4 2.3h1.2l.5-2.4.8-.3 2 1.3.8-.8-1.3-2 .3-.8 2.3-.4V7.4l-2.4-.5-.3-.8 1.3-2-.8-.8-2 1.3-.7-.2zM8 10.3A2.3 2.3 0 1 1 8 5.7a2.3 2.3 0 0 1 0 4.6z"/></svg>
+      </button>
     </div>
     <div class="big-buttons">
       <button class="big" id="copy" title="Copy structured review comments to clipboard">
@@ -402,6 +560,27 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
       <button class="link" id="clear">Clear all comments</button>
     </div>
   </div>
+  <div id="settings" class="settings" hidden>
+    <h3>Quick replies</h3>
+    <div id="qrList"></div>
+    <div class="row-actions">
+      <button class="link" id="qrAdd">+ Add quick reply</button>
+    </div>
+    <h3>Copy content</h3>
+    <label><input type="checkbox" id="optFileName" /> File name</label>
+    <label><input type="checkbox" id="optLineNumber" /> Line number</label>
+    <label><input type="checkbox" id="optLineText" /> Line content</label>
+    <label><input type="checkbox" id="optComment" /> Comment content</label>
+    <h3>Copy header template</h3>
+    <textarea id="optHeader" rows="6" placeholder="Prefix prepended to the copied review..."></textarea>
+    <div class="row-actions">
+      <button class="big" id="settingsSave">Save settings</button>
+      <button class="big secondary" id="settingsClose">Close</button>
+    </div>
+    <div class="clear-row">
+      <button class="link" id="settingsReset" title="Restore quick replies, copy options and the header template to their defaults">Reset to defaults</button>
+    </div>
+  </div>
   <div id="content"></div>
   <div id="empty" class="empty">
     No AI review comments yet.<br /><br />
@@ -413,9 +592,15 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
   const vscode = acquireVsCodeApi();
   const content = document.getElementById('content');
   const empty = document.getElementById('empty');
+  const settingsEl = document.getElementById('settings');
+  const qrList = document.getElementById('qrList');
 
   const twisty = '<svg class="twisty" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M6 4l4 4-4 4V4z"/></svg>';
   const jumpIcon = '<svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M9 2v1.5h2.44L6 8.94 7.06 10 12.5 4.56V7H14V2H9zM12 13H3V4h4V2.5H3A1.5 1.5 0 0 0 1.5 4v9A1.5 1.5 0 0 0 3 14.5h9A1.5 1.5 0 0 0 13.5 13V9H12v4z"/></svg>';
+
+  let latest = { files: [], activeLine: null, settings: null };
+  // Remembers the user's manual expand/collapse choices across re-renders.
+  const openState = new Map();
 
   function esc(s) {
     return String(s)
@@ -425,7 +610,13 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
       .replace(/"/g, '&quot;');
   }
 
-  function render(files) {
+  function threadKey(thread) { return thread.uri + '#' + thread.line; }
+
+  function render() {
+    const files = latest.files;
+    const activeLine = latest.activeLine;
+    const quickReplies = (latest.settings && latest.settings.quickReplies) || [];
+
     content.innerHTML = '';
     const total = files.reduce((n, f) => n + f.threads.reduce((m, t) => m + t.comments.length, 0), 0);
     empty.style.display = total === 0 ? 'block' : 'none';
@@ -433,7 +624,8 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
     for (const file of files) {
       const fileEl = document.createElement('details');
       fileEl.className = 'file';
-      fileEl.open = true;
+      fileEl.open = openState.has(file.uri) ? openState.get(file.uri) : true;
+      fileEl.addEventListener('toggle', () => openState.set(file.uri, fileEl.open));
       const count = file.threads.reduce((m, t) => m + t.comments.length, 0);
       const summary = document.createElement('summary');
       summary.innerHTML = twisty + '<span>' + esc(file.label) + '</span>' +
@@ -441,9 +633,14 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
       fileEl.appendChild(summary);
 
       for (const thread of file.threads) {
+        const key = threadKey(thread);
+        const isActive = activeLine !== null && thread.line === activeLine;
         const threadEl = document.createElement('details');
-        threadEl.className = 'thread';
-        threadEl.open = true;
+        threadEl.className = 'thread' + (isActive ? ' active' : '');
+        // Threads are collapsed by default; only the active thread (cursor
+        // line / latest comment) opens, unless the user toggled it manually.
+        threadEl.open = openState.has(key) ? openState.get(key) : isActive;
+        threadEl.addEventListener('toggle', () => openState.set(key, threadEl.open));
         const tSummary = document.createElement('summary');
         tSummary.innerHTML = twisty +
           '<span class="line-badge">Line ' + (thread.line + 1) + '</span>' +
@@ -469,6 +666,23 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
             '<div class="body">' + esc(c.body) + '</div>';
           commentsEl.appendChild(cEl);
         }
+
+        if (quickReplies.length > 0) {
+          const pillsEl = document.createElement('div');
+          pillsEl.className = 'pills';
+          for (const text of quickReplies) {
+            const pill = document.createElement('button');
+            pill.className = 'pill';
+            pill.textContent = text;
+            pill.title = 'Reply "' + text + '"';
+            pill.addEventListener('click', () => {
+              vscode.postMessage({ type: 'quickReply', uri: thread.uri, line: thread.line, text });
+            });
+            pillsEl.appendChild(pill);
+          }
+          commentsEl.appendChild(pillsEl);
+        }
+
         threadEl.appendChild(commentsEl);
         fileEl.appendChild(threadEl);
       }
@@ -478,25 +692,116 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
   }
 
   function setAllOpen(open) {
-    document.querySelectorAll('#content details').forEach((d) => { d.open = open; });
+    // Only threads collapse; file nodes stay open so the panel never looks empty.
+    document.querySelectorAll('#content details.thread').forEach((d) => {
+      d.open = open;
+    });
+    document.querySelectorAll('#content details.file').forEach((d) => {
+      d.open = true;
+    });
+    for (const file of latest.files) {
+      openState.set(file.uri, true);
+      for (const thread of file.threads) {
+        openState.set(threadKey(thread), open);
+      }
+    }
   }
 
+  // --- Settings panel -------------------------------------------------------
+  function addQrRow(value) {
+    const row = document.createElement('div');
+    row.className = 'qr-row';
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = value;
+    input.placeholder = 'Quick reply text';
+    const remove = document.createElement('button');
+    remove.textContent = '✕';
+    remove.title = 'Remove';
+    remove.addEventListener('click', () => row.remove());
+    row.appendChild(input);
+    row.appendChild(remove);
+    qrList.appendChild(row);
+  }
+
+  function populateSettings() {
+    const s = latest.settings;
+    if (!s) { return; }
+    qrList.innerHTML = '';
+    for (const reply of s.quickReplies) { addQrRow(reply); }
+    document.getElementById('optFileName').checked = !!s.includeFileName;
+    document.getElementById('optLineNumber').checked = !!s.includeLineNumber;
+    document.getElementById('optLineText').checked = !!s.includeLineText;
+    document.getElementById('optComment').checked = !!s.includeComment;
+    document.getElementById('optHeader').value = s.headerTemplate || '';
+  }
+
+  document.getElementById('settingsBtn').addEventListener('click', () => {
+    if (settingsEl.hidden) {
+      populateSettings();
+      settingsEl.hidden = false;
+    } else {
+      settingsEl.hidden = true;
+    }
+  });
+  document.getElementById('settingsClose').addEventListener('click', () => {
+    settingsEl.hidden = true;
+  });
+  document.getElementById('qrAdd').addEventListener('click', () => addQrRow(''));
+  document.getElementById('settingsReset').addEventListener('click', () => {
+    vscode.postMessage({ type: 'resetSettings' });
+  });
+  document.getElementById('settingsSave').addEventListener('click', () => {
+    const quickReplies = [...qrList.querySelectorAll('input')]
+      .map((i) => i.value.trim())
+      .filter((v) => v.length > 0);
+    vscode.postMessage({
+      type: 'saveSettings',
+      settings: {
+        quickReplies,
+        includeFileName: document.getElementById('optFileName').checked,
+        includeLineNumber: document.getElementById('optLineNumber').checked,
+        includeLineText: document.getElementById('optLineText').checked,
+        includeComment: document.getElementById('optComment').checked,
+        headerTemplate: document.getElementById('optHeader').value,
+      },
+    });
+    settingsEl.hidden = true;
+  });
+
+  // --- Toolbar --------------------------------------------------------------
   document.getElementById('copy').addEventListener('click', () => vscode.postMessage({ type: 'copy' }));
   document.getElementById('save').addEventListener('click', () => vscode.postMessage({ type: 'save' }));
   document.getElementById('clear').addEventListener('click', () => vscode.postMessage({ type: 'clear' }));
-  document.getElementById('expandAll').addEventListener('click', () => {
-    setAllOpen(true);
-    vscode.postMessage({ type: 'expandThreads' });
-  });
-  document.getElementById('collapseAll').addEventListener('click', () => {
-    setAllOpen(false);
-    vscode.postMessage({ type: 'collapseThreads' });
-  });
+  document.getElementById('panelExpandAll').addEventListener('click', () => setAllOpen(true));
+  document.getElementById('panelCollapseAll').addEventListener('click', () => setAllOpen(false));
+  document.getElementById('editorExpandAll').addEventListener('click', () => vscode.postMessage({ type: 'expandThreads' }));
+  document.getElementById('editorCollapseAll').addEventListener('click', () => vscode.postMessage({ type: 'collapseThreads' }));
 
   window.addEventListener('message', (event) => {
     const msg = event.data;
+    if (msg && msg.type === 'settingsReset') {
+      latest.settings = msg.settings || latest.settings;
+      if (!settingsEl.hidden) {
+        populateSettings();
+      }
+      render();
+      return;
+    }
     if (msg && msg.type === 'update') {
-      render(msg.files || []);
+      const prevActive = latest.activeLine;
+      latest = {
+        files: msg.files || [],
+        activeLine: msg.activeLine === undefined ? null : msg.activeLine,
+        settings: msg.settings || latest.settings,
+      };
+      if (latest.activeLine !== prevActive && latest.activeLine !== null) {
+        // A newly-active thread always opens, even if previously collapsed.
+        for (const file of latest.files) {
+          openState.delete(file.uri + '#' + latest.activeLine);
+        }
+      }
+      render();
     }
   });
 

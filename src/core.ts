@@ -9,38 +9,74 @@ export interface ReviewThread {
   comments: ReviewComment[];
 }
 
+/**
+ * Default prefix prepended to the copied review. Must stay in sync with the
+ * `mdAiReviewer.copy.headerTemplate` default declared in package.json.
+ */
 export const STRUCTURED_HEADER = `# AI Review Comments
 
 Please address the following review comments on the Markdown document below.
-Each item references a specific line number and the quoted source line.
+Each item quotes the source line it refers to.
 
 ---
 
 `;
 
-export function formatStructured(threads: ReviewThread[]): string {
+export interface FormatOptions {
+  includeFileName: boolean;
+  includeLineNumber: boolean;
+  includeLineText: boolean;
+  includeComment: boolean;
+  headerTemplate: string;
+}
+
+export const DEFAULT_FORMAT_OPTIONS: FormatOptions = {
+  includeFileName: false,
+  includeLineNumber: false,
+  includeLineText: true,
+  includeComment: true,
+  headerTemplate: STRUCTURED_HEADER,
+};
+
+export function formatStructured(
+  threads: ReviewThread[],
+  options?: Partial<FormatOptions>
+): string {
+  const opts: FormatOptions = { ...DEFAULT_FORMAT_OPTIONS, ...options };
+
+  let header = opts.headerTemplate;
+  if (header.length > 0 && !header.endsWith('\n')) {
+    header += '\n\n';
+  }
+
   if (threads.length === 0) {
-    return STRUCTURED_HEADER + '(No review comments yet.)\n';
+    return header + '(No review comments yet.)\n';
   }
 
   const sections: string[] = [];
 
   for (const thread of threads) {
     for (const item of thread.comments) {
-      sections.push(
-        [
-          `file: ${thread.file}`,
-          `Line ${item.line + 1}`,
-          `> ${item.lineText.trim()}`,
-          '',
-          item.comment,
-          '',
-          '---',
-          '',
-        ].join('\n')
-      );
+      const parts: string[] = [];
+      if (opts.includeFileName) {
+        parts.push(`file: ${thread.file}`);
+      }
+      if (opts.includeLineNumber) {
+        parts.push(`Line ${item.line + 1}`);
+      }
+      if (opts.includeLineText) {
+        parts.push(`> ${item.lineText.trim()}`);
+      }
+      if (opts.includeComment) {
+        if (parts.length > 0) {
+          parts.push('');
+        }
+        parts.push(item.comment);
+      }
+      parts.push('', '---', '');
+      sections.push(parts.join('\n'));
     }
   }
 
-  return STRUCTURED_HEADER + sections.join('\n');
+  return header + sections.join('\n');
 }

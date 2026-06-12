@@ -1,6 +1,14 @@
 # Changelog
 
-## 0.1.16
+## 0.1.17
+
+- Unsaved (`untitled`) Markdown files now show their comments in the AI Review side panel; jump-to-line works for them too.
+- Comments can now be edited after submission: a pencil icon on each comment enters edit mode, Enter (or the Save button) saves, Escape (or Cancel) reverts to the last saved text.
+- Expand/Collapse controls are now split into two independent groups in the side panel: "Panel" (the panel's own tree) and "Editor" (the comment threads in the Markdown editor). Each editor comment widget's title bar also gained Expand All / Collapse All buttons.
+- Side panel threads are collapsed by default; only the active thread (cursor line, or the thread that just gained/edited a comment) expands automatically. Manual expand/collapse choices are remembered.
+- Quick replies: clickable pills under each thread in the side panel submit a reply instantly. Defaults are emoji-friendly ("👍 Looks good", "✅ Confirmed", "❌ No", "🤔 Please clarify", "🛠️ Please fix", "📌 TODO later") and the list is editable in the panel's new settings section (gear icon) or via `mdAiReviewer.quickReplies`; a "Reset to defaults" button restores all settings.
+- Copy Review is now configurable: by default it copies only the quoted line content and the comment (no file name, no line number). The settings section lets you toggle file name / line number / line content / comment and edit the header (prompt) template prepended to the copied text (`mdAiReviewer.copy.*`).
+- Replaced the long "Add an AI review comment for this line" gutter prompt with a compact "💬 Add review comment" button label.
 
 - Fixed the frontmatter Properties table squeezing values to one character per line in narrow preview panes. The key column used a fixed `table-layout` with a hard 200px width; it now uses an auto layout where the key column shrinks to its content and the value column takes the remaining width (long URLs still wrap instead of overflowing).
 

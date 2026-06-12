@@ -10,6 +10,10 @@ let commentIdCounter = 1;
 export class ReviewCommentItem implements vscode.Comment {
   readonly id: number;
   label: string | undefined;
+  /** Body as of the last save, restored when an edit is cancelled. */
+  savedBody: string;
+  /** Enables the edit/delete menu items declared in package.json. */
+  contextValue = 'editable';
 
   constructor(
     public body: string | vscode.MarkdownString,
@@ -18,6 +22,7 @@ export class ReviewCommentItem implements vscode.Comment {
     public parent?: vscode.CommentThread
   ) {
     this.id = commentIdCounter++;
+    this.savedBody = typeof body === 'string' ? body : body.value;
   }
 }
 
@@ -38,6 +43,12 @@ export class MarkdownCommentController {
   private readonly _onDidChange = new vscode.EventEmitter<void>();
   /** Fires whenever the set of tracked threads/comments changes. */
   readonly onDidChange = this._onDidChange.event;
+
+  /** Location of the thread that most recently gained or changed a comment. */
+  private _lastActive: { uri: string; line: number } | undefined;
+  get lastActive(): { uri: string; line: number } | undefined {
+    return this._lastActive;
+  }
 
   constructor(context: vscode.ExtensionContext) {
     this.controller = vscode.comments.createCommentController(
@@ -62,8 +73,8 @@ export class MarkdownCommentController {
     };
 
     this.controller.options = {
-      prompt: 'Add an AI review comment for this line',
-      placeHolder: 'Describe the review feedback for this line...',
+      prompt: '💬 Add review comment',
+      placeHolder: 'Write a review comment... (Enter to submit)',
     };
 
     context.subscriptions.push(this.controller);
@@ -86,8 +97,131 @@ export class MarkdownCommentController {
     thread.collapsibleState = vscode.CommentThreadCollapsibleState.Expanded;
 
     this.threads.add(thread);
+    if (thread.range) {
+      this._lastActive = {
+        uri: thread.uri.toString(),
+        line: thread.range.start.line,
+      };
+    }
     this._onDidChange.fire();
     return thread;
+  }
+
+  /**
+   * Appends a quick-reply comment to the tracked thread at (uri, line).
+   * Returns false when no such thread exists or the text is blank.
+   */
+  addQuickReply(uri: string, line: number, text: string): boolean {
+    const body = text.trim();
+    if (!body) {
+      return false;
+    }
+
+    const thread = [...this.threads].find(
+      (item) =>
+        item.uri.toString() === uri &&
+        !!item.range &&
+        item.range.start.line === line
+    );
+    if (!thread) {
+      return false;
+    }
+
+    const comment = new ReviewCommentItem(
+      body,
+      vscode.CommentMode.Preview,
+      this.author,
+      thread
+    );
+    thread.comments = [...thread.comments, comment];
+    thread.collapsibleState = vscode.CommentThreadCollapsibleState.Expanded;
+    this._lastActive = { uri, line };
+    this._onDidChange.fire();
+    return true;
+  }
+
+  /** Switches a comment into inline editing mode. */
+  editComment(comment: ReviewCommentItem): void {
+    const thread = comment.parent;
+    if (!thread) {
+      return;
+    }
+    thread.comments = thread.comments.map((item) => {
+      if ((item as ReviewCommentItem).id === comment.id) {
+        item.mode = vscode.CommentMode.Editing;
+      }
+      return item;
+    });
+  }
+
+  /** Persists the edited body (VS Code mutates `body` while editing). */
+  saveComment(comment: ReviewCommentItem): void {
+    const thread = comment.parent;
+    if (!thread) {
+      return;
+    }
+    thread.comments = thread.comments.map((item) => {
+      const reviewItem = item as ReviewCommentItem;
+      if (reviewItem.id === comment.id) {
+        reviewItem.savedBody =
+          typeof reviewItem.body === 'string'
+            ? reviewItem.body
+            : reviewItem.body.value;
+        reviewItem.mode = vscode.CommentMode.Preview;
+      }
+      return item;
+    });
+    if (thread.range) {
+      this._lastActive = {
+        uri: thread.uri.toString(),
+        line: thread.range.start.line,
+      };
+    }
+    this._onDidChange.fire();
+  }
+
+  /**
+   * Cancels every comment currently in editing mode (used by the Escape
+   * keybinding, which has no specific comment argument). Returns whether any
+   * edit was actually cancelled.
+   */
+  cancelAllEdits(): boolean {
+    let cancelled = false;
+    for (const thread of this.threads) {
+      if (
+        !thread.comments.some(
+          (item) => item.mode === vscode.CommentMode.Editing
+        )
+      ) {
+        continue;
+      }
+      thread.comments = thread.comments.map((item) => {
+        const reviewItem = item as ReviewCommentItem;
+        if (reviewItem.mode === vscode.CommentMode.Editing) {
+          reviewItem.body = reviewItem.savedBody;
+          reviewItem.mode = vscode.CommentMode.Preview;
+          cancelled = true;
+        }
+        return item;
+      });
+    }
+    return cancelled;
+  }
+
+  /** Discards an in-progress edit and restores the last saved body. */
+  cancelEditComment(comment: ReviewCommentItem): void {
+    const thread = comment.parent;
+    if (!thread) {
+      return;
+    }
+    thread.comments = thread.comments.map((item) => {
+      const reviewItem = item as ReviewCommentItem;
+      if (reviewItem.id === comment.id) {
+        reviewItem.body = reviewItem.savedBody;
+        reviewItem.mode = vscode.CommentMode.Preview;
+      }
+      return item;
+    });
   }
 
   deleteComment(comment: ReviewCommentItem): void {
@@ -232,7 +366,9 @@ export class MarkdownCommentController {
         (item) => item.uri.toString() === thread.uri.toString()
       );
       const line = thread.range.start.line;
-      const lineText = doc?.lineAt(line).text ?? '';
+      // The document may have shrunk since the thread was created.
+      const lineText =
+        doc && line < doc.lineCount ? doc.lineAt(line).text : '';
 
       for (const comment of thread.comments) {
         const body =

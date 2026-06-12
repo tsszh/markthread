@@ -2,7 +2,7 @@
   "name": "md-ai-reviewer",
   "displayName": "Markdown AI Reviewer",
   "description": "Custom Markdown preview styling and line-by-line AI review comments for Markdown files.",
-  "version": "0.1.16",
+  "version": "0.1.17",
   "publisher": "local",
   "license": "MIT",
   "repository": {
@@ -79,6 +79,44 @@
         "title": "Delete Thread",
         "category": "Markdown AI Reviewer",
         "icon": "$(trash)"
+      },
+      {
+        "command": "md-ai-reviewer.editComment",
+        "title": "Edit Comment",
+        "category": "Markdown AI Reviewer",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "md-ai-reviewer.saveComment",
+        "title": "Save",
+        "category": "Markdown AI Reviewer"
+      },
+      {
+        "command": "md-ai-reviewer.cancelEditComment",
+        "title": "Cancel",
+        "category": "Markdown AI Reviewer"
+      },
+      {
+        "command": "md-ai-reviewer.cancelEdit",
+        "title": "Cancel Comment Edit",
+        "category": "Markdown AI Reviewer"
+      },
+      {
+        "command": "md-ai-reviewer.quickReply",
+        "title": "Quick Reply",
+        "category": "Markdown AI Reviewer"
+      },
+      {
+        "command": "md-ai-reviewer.expandAllThreads",
+        "title": "Expand All Review Comments",
+        "category": "Markdown AI Reviewer",
+        "icon": "$(expand-all)"
+      },
+      {
+        "command": "md-ai-reviewer.collapseAllThreads",
+        "title": "Collapse All Review Comments",
+        "category": "Markdown AI Reviewer",
+        "icon": "$(collapse-all)"
       }
     ],
     "viewsContainers": {
@@ -125,6 +163,11 @@
           "text": "\n"
         },
         "when": "commentEditorFocused"
+      },
+      {
+        "key": "escape",
+        "command": "md-ai-reviewer.cancelEdit",
+        "when": "commentEditorFocused && !suggestWidgetVisible"
       }
     ],
     "menus": {
@@ -164,6 +207,34 @@
         {
           "command": "md-ai-reviewer.revealComment",
           "when": "false"
+        },
+        {
+          "command": "md-ai-reviewer.editComment",
+          "when": "false"
+        },
+        {
+          "command": "md-ai-reviewer.saveComment",
+          "when": "false"
+        },
+        {
+          "command": "md-ai-reviewer.cancelEditComment",
+          "when": "false"
+        },
+        {
+          "command": "md-ai-reviewer.cancelEdit",
+          "when": "false"
+        },
+        {
+          "command": "md-ai-reviewer.quickReply",
+          "when": "false"
+        },
+        {
+          "command": "md-ai-reviewer.expandAllThreads",
+          "when": "editorLangId == markdown"
+        },
+        {
+          "command": "md-ai-reviewer.collapseAllThreads",
+          "when": "editorLangId == markdown"
         }
       ],
       "comments/commentThread/context": [
@@ -176,22 +247,100 @@
           "command": "md-ai-reviewer.replyComment",
           "group": "inline@1",
           "when": "commentController == md-ai-reviewer && !commentThreadIsEmpty"
+        },
+        {
+          "command": "md-ai-reviewer.quickReply",
+          "group": "inline@2",
+          "when": "commentController == md-ai-reviewer"
         }
       ],
       "comments/commentThread/title": [
         {
-          "command": "md-ai-reviewer.deleteThread",
+          "command": "md-ai-reviewer.expandAllThreads",
           "group": "navigation@1",
+          "when": "commentController == md-ai-reviewer"
+        },
+        {
+          "command": "md-ai-reviewer.collapseAllThreads",
+          "group": "navigation@2",
+          "when": "commentController == md-ai-reviewer"
+        },
+        {
+          "command": "md-ai-reviewer.deleteThread",
+          "group": "navigation@3",
           "when": "commentController == md-ai-reviewer"
         }
       ],
       "comments/comment/title": [
         {
-          "command": "md-ai-reviewer.deleteComment",
+          "command": "md-ai-reviewer.editComment",
           "group": "inline@1",
+          "when": "commentController == md-ai-reviewer && comment == editable"
+        },
+        {
+          "command": "md-ai-reviewer.deleteComment",
+          "group": "inline@2",
+          "when": "commentController == md-ai-reviewer"
+        }
+      ],
+      "comments/comment/context": [
+        {
+          "command": "md-ai-reviewer.saveComment",
+          "group": "inline@1",
+          "when": "commentController == md-ai-reviewer"
+        },
+        {
+          "command": "md-ai-reviewer.cancelEditComment",
+          "group": "inline@2",
           "when": "commentController == md-ai-reviewer"
         }
       ]
+    },
+    "configuration": {
+      "title": "Markdown AI Reviewer",
+      "properties": {
+        "mdAiReviewer.quickReplies": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "👍 Looks good",
+            "✅ Confirmed",
+            "❌ No",
+            "🤔 Please clarify",
+            "🛠️ Please fix",
+            "📌 TODO later"
+          ],
+          "description": "Quick reply texts shown as pills in the AI Review panel and offered by the Quick Reply button in comment threads."
+        },
+        "mdAiReviewer.copy.includeFileName": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include the file name in each copied review comment."
+        },
+        "mdAiReviewer.copy.includeLineNumber": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include the line number in each copied review comment."
+        },
+        "mdAiReviewer.copy.includeLineText": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include the quoted source line in each copied review comment."
+        },
+        "mdAiReviewer.copy.includeComment": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include the comment text in each copied review comment."
+        },
+        "mdAiReviewer.copy.headerTemplate": {
+          "type": "string",
+          "editPresentation": "multilineText",
+          "default": "# AI Review Comments\n\nPlease address the following review comments on the Markdown document below.\nEach item quotes the source line it refers to.\n\n---\n\n",
+          "description": "Prefix (header/prompt) prepended to the copied review."
+        }
+      }
     }
   },
   "scripts": {

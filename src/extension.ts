@@ -2,8 +2,10 @@ import * as vscode from 'vscode';
 import { MarkdownCommentController, ReviewCommentItem } from './comments';
 import { buildPanelModel, ReviewPanelProvider } from './reviewPanel';
 import { formatStructured } from './core';
+import { readSettings } from './settings';
 import {
   deleteReview,
+  isReviewableMarkdownDocument,
   isSidecar,
   readReview,
   sidecarUri,
@@ -50,12 +52,9 @@ export function activate(context: vscode.ExtensionContext): void {
   // Whether an editor represents a real Markdown file we should track in the
   // panel. The comment input box is ALSO a markdown-language editor (for syntax
   // highlighting) but has a non-file scheme like `comment`, so focusing it must
-  // not be mistaken for switching files.
+  // not be mistaken for switching files. Unsaved (`untitled`) files count too.
   const isReviewableMarkdown = (editor?: vscode.TextEditor): boolean =>
-    !!editor &&
-    editor.document.languageId === 'markdown' &&
-    editor.document.uri.scheme === 'file' &&
-    !isSidecar(editor.document.uri);
+    !!editor && isReviewableMarkdownDocument(editor.document);
 
   const initialEditor = vscode.window.activeTextEditor;
   if (isReviewableMarkdown(initialEditor)) {
@@ -71,7 +70,11 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(
       'md-ai-reviewer.revealComment',
       async (uri: vscode.Uri, line: number) => {
-        const doc = await vscode.workspace.openTextDocument(uri);
+        // Untitled documents cannot be re-opened by URI; reuse the live one.
+        const doc =
+          vscode.workspace.textDocuments.find(
+            (item) => item.uri.toString() === uri.toString()
+          ) ?? (await vscode.workspace.openTextDocument(uri));
         const editor = await vscode.window.showTextDocument(doc, {
           preview: false,
         });
@@ -117,6 +120,18 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.window.onDidChangeActiveTextEditor((editor) => {
       if (isReviewableMarkdown(editor)) {
         panelProvider.setActiveUri(editor!.document.uri.toString());
+      }
+    }),
+    // Follow the cursor so the side panel expands the thread under it.
+    vscode.window.onDidChangeTextEditorSelection((event) => {
+      if (isReviewableMarkdown(event.textEditor)) {
+        panelProvider.setActiveLine(event.selections[0]?.active.line);
+      }
+    }),
+    // Settings edited outside the panel (VS Code Settings UI) refresh it too.
+    vscode.workspace.onDidChangeConfiguration((event) => {
+      if (event.affectsConfiguration('mdAiReviewer')) {
+        panelProvider.refresh();
       }
     })
   );
@@ -166,6 +181,70 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     ),
 
+    // In-place editing of an already submitted comment.
+    vscode.commands.registerCommand(
+      'md-ai-reviewer.editComment',
+      (comment: ReviewCommentItem) => {
+        controller.editComment(comment);
+      }
+    ),
+
+    vscode.commands.registerCommand(
+      'md-ai-reviewer.saveComment',
+      (comment: ReviewCommentItem) => {
+        controller.saveComment(comment);
+      }
+    ),
+
+    vscode.commands.registerCommand(
+      'md-ai-reviewer.cancelEditComment',
+      (comment: ReviewCommentItem) => {
+        controller.cancelEditComment(comment);
+      }
+    ),
+
+    // Escape in the comment editor: cancel an in-progress comment edit, or
+    // fall back to VS Code's default behavior (hide the comment widget).
+    vscode.commands.registerCommand('md-ai-reviewer.cancelEdit', async () => {
+      if (!controller.cancelAllEdits()) {
+        await vscode.commands.executeCommand('workbench.action.hideComment');
+      }
+    }),
+
+    // Quick reply from the editor comment widget: pick one of the configured
+    // replies and submit it directly to the thread.
+    vscode.commands.registerCommand(
+      'md-ai-reviewer.quickReply',
+      async (reply: vscode.CommentReply) => {
+        const { quickReplies } = readSettings();
+        if (quickReplies.length === 0) {
+          vscode.window.showInformationMessage(
+            'No quick replies configured. Add some in the AI Review panel settings.'
+          );
+          return;
+        }
+        const pick = await vscode.window.showQuickPick(quickReplies, {
+          placeHolder: 'Select a quick reply to submit',
+        });
+        if (pick) {
+          controller.addComment({ thread: reply.thread, text: pick });
+        }
+      }
+    ),
+
+    // Expand/collapse every review thread shown in the Markdown editor.
+    vscode.commands.registerCommand('md-ai-reviewer.expandAllThreads', () => {
+      controller.setAllCollapsibleState(
+        vscode.CommentThreadCollapsibleState.Expanded
+      );
+    }),
+
+    vscode.commands.registerCommand('md-ai-reviewer.collapseAllThreads', () => {
+      controller.setAllCollapsibleState(
+        vscode.CommentThreadCollapsibleState.Collapsed
+      );
+    }),
+
     vscode.commands.registerCommand(
       'md-ai-reviewer.deleteThread',
       (thread: vscode.CommentThread) => {
@@ -180,13 +259,17 @@ export function activate(context: vscode.ExtensionContext): void {
         return;
       }
 
+      // Only the active file's comments are collected; output fields and the
+      // header prefix follow the user's copy settings.
       const threads = controller.collectReviewThreads(editor.document);
       if (threads.length === 0) {
         vscode.window.showInformationMessage('No review comments on this file yet.');
         return;
       }
 
-      await vscode.env.clipboard.writeText(formatStructured(threads));
+      await vscode.env.clipboard.writeText(
+        formatStructured(threads, readSettings())
+      );
       const count = threads.reduce((sum, t) => sum + t.comments.length, 0);
       const file = vscode.workspace.asRelativePath(editor.document.uri);
       vscode.window.showInformationMessage(
@@ -198,6 +281,12 @@ export function activate(context: vscode.ExtensionContext): void {
       const editor = vscode.window.activeTextEditor;
       if (!editor || editor.document.languageId !== 'markdown') {
         vscode.window.showWarningMessage('Open a Markdown file to save its review comments.');
+        return;
+      }
+      if (editor.document.uri.scheme !== 'file') {
+        vscode.window.showWarningMessage(
+          'Save the Markdown file to disk first, then save its review comments.'
+        );
         return;
       }
 

@@ -27,6 +27,21 @@ export function isSidecar(uri: vscode.Uri): boolean {
   return uri.path.endsWith(SIDECAR_SUFFIX);
 }
 
+/**
+ * Whether a document is a Markdown file we review. Includes unsaved
+ * (`untitled`) documents; excludes the comment input box (scheme `comment`)
+ * and our own sidecar files.
+ */
+export function isReviewableMarkdownDocument(
+  document: vscode.TextDocument
+): boolean {
+  return (
+    document.languageId === 'markdown' &&
+    (document.uri.scheme === 'file' || document.uri.scheme === 'untitled') &&
+    !isSidecar(document.uri)
+  );
+}
+
 export function serializeReview(review: StoredReview): string {
   return JSON.stringify(review, null, 2) + '\n';
 }
