@@ -37,7 +37,11 @@ jobs:
       # Produces the offline-capable dist/standalone/index.html (JS + CSS inlined).
       - run: node esbuild.js
 
+      # enablement: true turns on GitHub Pages (build type "workflow") on first
+      # run, so no manual Settings → Pages step is required.
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
