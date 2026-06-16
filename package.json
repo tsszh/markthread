@@ -2,12 +2,12 @@
   "name": "md-ai-reviewer",
   "displayName": "Markdown AI Reviewer",
   "description": "Custom Markdown preview styling and line-by-line AI review comments for Markdown files.",
-  "version": "0.1.17",
+  "version": "0.1.23",
   "publisher": "local",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/songz/md-ai-reviewer.git"
+    "url": "https://github.com/tsszh/md-ai-reviewer.git"
   },
   "engines": {
     "vscode": "^1.75.0"
@@ -27,6 +27,23 @@
       "./media/toc.js"
     ],
     "commands": [
+      {
+        "command": "md-ai-reviewer.openPreview",
+        "title": "Open AI Review Preview to the Side",
+        "category": "Markdown AI Reviewer",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "md-ai-reviewer.openPreviewInPlace",
+        "title": "Open AI Review Preview",
+        "category": "Markdown AI Reviewer",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "md-ai-reviewer.openCommentInPreview",
+        "title": "Open Comment in AI Review Preview",
+        "category": "Markdown AI Reviewer"
+      },
       {
         "command": "md-ai-reviewer.copyToClipboard",
         "title": "Copy AI Review to Clipboard",
@@ -141,6 +158,18 @@
     },
     "keybindings": [
       {
+        "key": "ctrl+shift+v",
+        "mac": "cmd+shift+v",
+        "command": "md-ai-reviewer.openPreviewInPlace",
+        "when": "editorLangId == markdown && editorTextFocus && !notebookEditorFocused"
+      },
+      {
+        "key": "ctrl+k v",
+        "mac": "cmd+k v",
+        "command": "md-ai-reviewer.openPreview",
+        "when": "editorLangId == markdown && editorTextFocus && !notebookEditorFocused"
+      },
+      {
         "key": "enter",
         "command": "md-ai-reviewer.submit",
         "when": "commentEditorFocused && !suggestWidgetVisible"
@@ -171,7 +200,26 @@
       }
     ],
     "menus": {
+      "editor/title": [
+        {
+          "command": "md-ai-reviewer.openPreview",
+          "when": "editorLangId == markdown",
+          "group": "navigation@-1"
+        }
+      ],
       "commandPalette": [
+        {
+          "command": "md-ai-reviewer.openPreview",
+          "when": "editorLangId == markdown"
+        },
+        {
+          "command": "md-ai-reviewer.openPreviewInPlace",
+          "when": "editorLangId == markdown"
+        },
+        {
+          "command": "md-ai-reviewer.openCommentInPreview",
+          "when": "false"
+        },
         {
           "command": "md-ai-reviewer.copyToClipboard",
           "when": "editorLangId == markdown"
@@ -305,12 +353,12 @@
             "type": "string"
           },
           "default": [
-            "👍 Looks good",
-            "✅ Confirmed",
-            "❌ No",
-            "🤔 Please clarify",
-            "🛠️ Please fix",
-            "📌 TODO later"
+            "Looks good",
+            "Confirmed",
+            "No",
+            "Please clarify",
+            "Please fix",
+            "TODO later"
           ],
           "description": "Quick reply texts shown as pills in the AI Review panel and offered by the Quick Reply button in comment threads."
         },
@@ -348,12 +396,14 @@
     "watch": "node esbuild.js --watch",
     "lint": "eslint src",
     "test": "npm run compile && vscode-test",
-    "preview": "node scripts/preview-server.mjs",
+    "build:standalone": "node esbuild.js",
+    "preview": "node esbuild.js && node scripts/preview-server.mjs",
     "package": "npm run compile && vsce package --no-dependencies",
     "vscode:prepublish": "npm run compile"
   },
   "devDependencies": {
     "@eslint/js": "^9.22.0",
+    "@types/markdown-it": "^14.1.2",
     "@types/mocha": "^10.0.10",
     "@types/node": "^22.13.10",
     "@types/vscode": "^1.75.0",
@@ -364,13 +414,19 @@
     "@vscode/vsce": "^3.3.2",
     "esbuild": "^0.25.1",
     "eslint": "^9.22.0",
+    "mocha": "^11.1.0",
+    "typescript": "^5.8.2",
+    "typescript-eslint": "^8.26.1"
+  },
+  "dependencies": {
+    "chart.js": "^4.5.1",
+    "echarts": "^6.1.0",
     "highlight.js": "^11.11.1",
     "markdown-it": "^14.1.0",
     "markdown-it-front-matter": "^0.2.4",
     "markdown-it-github-alerts": "^0.3.1",
-    "mocha": "^11.1.0",
-    "typescript": "^5.8.2",
-    "typescript-eslint": "^8.26.1",
+    "markdown-it-task-lists": "^2.1.1",
+    "mermaid": "^11.15.0",
     "yaml": "^2.9.0"
   }
 }

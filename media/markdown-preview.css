@@ -204,8 +204,20 @@ blockquote strong { color: var(--text-strong) !important; }
 
 .callout > .callout-title,
 .markdown-alert > .markdown-alert-title {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.45rem !important;
   font-weight: 700 !important;
   margin-bottom: 0.35rem !important;
+}
+.callout > .callout-title svg,
+.markdown-alert > .markdown-alert-title svg,
+.callout > .callout-title .octicon,
+.markdown-alert > .markdown-alert-title .octicon {
+  flex: 0 0 auto !important;
+  width: 1em !important;
+  height: 1em !important;
+  vertical-align: middle !important;
 }
 
 .callout > p,

@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { ReviewComment, ReviewThread } from './core';
+import { StoredThread } from './storage';
 
 let commentIdCounter = 1;
 
@@ -35,6 +36,14 @@ export class MarkdownCommentController {
    * We track every thread we have seen so export/clear can operate on them.
    */
   private readonly threads = new Set<vscode.CommentThread>();
+
+  /**
+   * Selection-anchored threads authored in the custom preview, kept in memory
+   * per document URI. The native gutter only models whole-line threads, so
+   * selection threads live here (and in the sidecar once explicitly saved)
+   * instead of being written to disk on every edit.
+   */
+  private readonly selectionThreads = new Map<string, StoredThread[]>();
 
   private readonly author: vscode.CommentAuthorInformation = {
     name: 'Reviewer',
@@ -252,7 +261,37 @@ export class MarkdownCommentController {
       thread.dispose();
     }
     this.threads.clear();
+    this.selectionThreads.clear();
     this._onDidChange.fire();
+  }
+
+  /** In-memory selection-anchored threads for a document (preview-authored). */
+  getSelectionThreads(uri: string): StoredThread[] {
+    return this.selectionThreads.get(uri) ?? [];
+  }
+
+  /** Replaces the in-memory selection threads for a document (no disk write). */
+  setSelectionThreads(uri: string, threads: StoredThread[]): void {
+    if (threads.length > 0) {
+      this.selectionThreads.set(uri, threads);
+    } else {
+      this.selectionThreads.delete(uri);
+    }
+    this._onDidChange.fire();
+  }
+
+  /**
+   * Removes every tracked thread for a document. Used by the custom preview to
+   * reconcile the native gutter with the (authoritative) preview thread set
+   * before re-adding, so deletions made in the preview also clear the gutter.
+   */
+  removeThreadsForUri(uri: string): void {
+    for (const thread of [...this.threads]) {
+      if (thread.uri.toString() === uri) {
+        this.threads.delete(thread);
+        thread.dispose();
+      }
+    }
   }
 
   /**
@@ -378,6 +417,25 @@ export class MarkdownCommentController {
 
         const comments = grouped.get(file) ?? [];
         comments.push({ line, lineText, comment: body });
+        grouped.set(file, comments);
+      }
+    }
+
+    // Include preview-authored selection threads kept in memory.
+    for (const [uri, list] of this.selectionThreads) {
+      if (document && uri !== document.uri.toString()) {
+        continue;
+      }
+      const file = vscode.workspace.asRelativePath(vscode.Uri.parse(uri));
+      for (const thread of list) {
+        const comments = grouped.get(file) ?? [];
+        for (const c of thread.comments) {
+          comments.push({
+            line: thread.line,
+            lineText: thread.lineText,
+            comment: c.body,
+          });
+        }
         grouped.set(file, comments);
       }
     }

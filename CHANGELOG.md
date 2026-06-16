@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.1.23
+
+- Standalone web app: added a "Clear all comments" action (in the ⋯ menu) that removes every comment for the current document after confirmation.
+- VS Code: "Copy AI Review" and "Save to file" now work when the rendered preview webview is the active tab (previously they reported 0 comments and required switching back to the raw Markdown file). Copy/Save also now include selection-anchored comments.
+- Comments can be edited and deleted individually in the preview popup (hover a comment for the edit/delete buttons); deleting the last comment removes the thread.
+- The line/cell comment marker now shows the total number of comments (including follow-up replies) instead of always showing 1.
+
+## 0.1.22
+
+- The custom preview no longer writes a `<file>.ai-review.json` sidecar on every comment edit. Comments (including selection-anchored threads) are now kept in memory and only persisted to disk when you explicitly run "Save to file", matching the native gutter behavior.
+- "Save to file" now also persists selection-anchored threads (previously only whole-line threads were saved), and loading a sidecar restores them into memory instead of duplicating them onto the gutter.
+
+## 0.1.21
+
+- Comment popups no longer drop below tall blocks (charts, big tables/images). When there is no room to the left, the popup now opens just below the marker with the drop capped to ~3 lines, and is kept within the viewport so it stays next to the element instead of appearing far below it.
+- Rebinding the preview to a document in another folder now refreshes the webview's allowed resource roots so its relative images still load.
+
+## 0.1.20
+
+- Relative images (e.g. `![](screenshots/x.png)`) now load in the VS Code preview: the document folder and workspace folders are added to the webview's allowed resource roots, and relative image URLs are resolved against the document folder.
+- Removed the always-on quick-reply pills from the side "Review Comments" panel; the panel is now a clean read-only index. Clicking a comment (or the jump button) opens the rendered AI Review preview and scrolls to that thread, where you can read, reply and edit it directly.
+- The side-panel "jump" now opens the rendered preview at the thread instead of dropping you into the raw Markdown source.
+- Added "Open AI Review Preview" (in place) which replaces the current editor like the built-in `Ctrl+Shift+V` Markdown preview, in addition to the existing "to the Side" command. Keybindings: `Ctrl/Cmd+Shift+V` opens in place, `Ctrl/Cmd+K V` opens to the side (in Markdown editors).
+
+## 0.1.19
+
+- The "Open AI Review Preview" editor-title button now uses a distinct comment-discussion icon so it is no longer confused with VS Code's built-in Markdown preview button.
+- Fixed comment gutter markers overlapping the document text in the VS Code preview: the standalone mobile layout's gutter override was leaking into the (often narrow) preview panel; it is now scoped to the standalone app, so the preview keeps its desktop gutter offset.
+- Fixed quick-reply pills in the VS Code preview adding an invisible comment: the verdict is now written into the comment body (in addition to the colored status chip), so it survives the sidecar/native round-trip — which only persists author + body — and shows up in the preview, the editor gutter threads, and the side panel.
+
+## 0.1.18
+
+- Reworked the shared review preview (used by both the standalone web app and the VS Code preview webview) into a Quip-style experience: comment threads now open in a single floating popup overlay that never reflows the document, with a left-gutter marker (icon + count) when collapsed.
+- Table cells are individually commentable: a marker appears in the cell's top-right corner and opens the same popup to view/edit/add comments.
+- Quick-reply pills are now hidden until the reply box is focused, so the composer starts clean.
+- Fixed GitHub alert (Note/Tip/Important/Warning/Caution) titles so the icon and label are vertically aligned, and replaced the dashed divider above the quick-reply pills with a clean solid hairline.
+- Standalone web app: configurable quick-reply pills and a "Share review" copy template, both persisted in `localStorage`; "Export comments" stays JSON while "Share review" copies a readable text summary (line number, line text, comments).
+- Main content width is now fluid (grows with the window with responsive gutters) instead of a fixed max-width cap.
+
 ## 0.1.17
 
 - Unsaved (`untitled`) Markdown files now show their comments in the AI Review side panel; jump-to-line works for them too.

@@ -5,9 +5,20 @@ export interface StoredComment {
   body: string;
 }
 
+/** Optional text-selection anchor for comments created from the preview. */
+export interface StoredSelection {
+  startLine: number;
+  startChar: number;
+  endLine: number;
+  endChar: number;
+  text: string;
+}
+
 export interface StoredThread {
   line: number;
   lineText: string;
+  /** Present when the thread targets a selection rather than a whole line. */
+  selection?: StoredSelection;
   comments: StoredComment[];
 }
 
@@ -42,6 +53,16 @@ export function isReviewableMarkdownDocument(
   );
 }
 
+function normalizeSelection(value: Partial<StoredSelection>): StoredSelection {
+  return {
+    startLine: Number(value.startLine) || 0,
+    startChar: Number(value.startChar) || 0,
+    endLine: Number(value.endLine) || 0,
+    endChar: Number(value.endChar) || 0,
+    text: String(value.text ?? ''),
+  };
+}
+
 export function serializeReview(review: StoredReview): string {
   return JSON.stringify(review, null, 2) + '\n';
 }
@@ -62,6 +83,9 @@ export function parseReview(json: string): StoredReview | undefined {
         .map((thread) => ({
           line: Number(thread.line) || 0,
           lineText: String(thread.lineText ?? ''),
+          ...(thread.selection
+            ? { selection: normalizeSelection(thread.selection) }
+            : {}),
           comments: thread.comments
             .filter((c) => !!c && typeof c.body === 'string')
             .map((c) => ({

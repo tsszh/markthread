@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { MarkdownCommentController, ReviewCommentItem } from './comments';
 import { buildPanelModel, ReviewPanelProvider } from './reviewPanel';
+import { ReviewPreviewPanel } from './previewPanel';
 import { formatStructured } from './core';
 import { readSettings } from './settings';
 import {
@@ -22,25 +23,29 @@ function reviewForDocument(
   const file = buildPanelModel(controller).find(
     (item) => item.uri === document.uri.toString()
   );
-  if (!file || file.threads.length === 0) {
+  const lineThreads = (file?.threads ?? []).map((thread) => ({
+    line: thread.line,
+    // Persist the raw source line so the sidecar reflects the actual file
+    // content, not the marker-stripped/trimmed text shown in the panel.
+    lineText:
+      thread.line >= 0 && thread.line < document.lineCount
+        ? document.lineAt(thread.line).text
+        : thread.lineText,
+    comments: thread.comments.map((comment) => ({
+      author: comment.author,
+      body: comment.body,
+    })),
+  }));
+  // Selection-anchored threads live only in the controller's in-memory store
+  // (they have no native gutter representation) — include them when saving.
+  const selectionThreads = controller.getSelectionThreads(
+    document.uri.toString()
+  );
+  const comments = [...lineThreads, ...selectionThreads];
+  if (comments.length === 0) {
     return undefined;
   }
-  return {
-    version: 1,
-    comments: file.threads.map((thread) => ({
-      line: thread.line,
-      // Persist the raw source line so the sidecar reflects the actual file
-      // content, not the marker-stripped/trimmed text shown in the panel.
-      lineText:
-        thread.line >= 0 && thread.line < document.lineCount
-          ? document.lineAt(thread.line).text
-          : thread.lineText,
-      comments: thread.comments.map((comment) => ({
-        author: comment.author,
-        body: comment.body,
-      })),
-    })),
-  };
+  return { version: 1, comments };
 }
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -55,6 +60,17 @@ export function activate(context: vscode.ExtensionContext): void {
   // not be mistaken for switching files. Unsaved (`untitled`) files count too.
   const isReviewableMarkdown = (editor?: vscode.TextEditor): boolean =>
     !!editor && isReviewableMarkdownDocument(editor.document);
+
+  // The Markdown document that review commands act on. Prefers the active text
+  // editor, but falls back to the document shown in the live preview so Copy /
+  // Save work even when the rendered webview (not the raw file) is focused.
+  const activeReviewDocument = (): vscode.TextDocument | undefined => {
+    const editor = vscode.window.activeTextEditor;
+    if (editor && isReviewableMarkdownDocument(editor.document)) {
+      return editor.document;
+    }
+    return ReviewPreviewPanel.activeDocument;
+  };
 
   const initialEditor = vscode.window.activeTextEditor;
   if (isReviewableMarkdown(initialEditor)) {
@@ -102,7 +118,14 @@ export function activate(context: vscode.ExtensionContext): void {
     }
     const stored = await readReview(document.uri);
     if (stored && stored.comments.length > 0) {
-      controller.loadStoredComments(document, stored.comments);
+      controller.loadStoredComments(
+        document,
+        stored.comments.filter((t) => !t.selection)
+      );
+      controller.setSelectionThreads(
+        document.uri.toString(),
+        stored.comments.filter((t) => !!t.selection)
+      );
     }
   }
 
@@ -253,15 +276,15 @@ export function activate(context: vscode.ExtensionContext): void {
     ),
 
     vscode.commands.registerCommand('md-ai-reviewer.copyToClipboard', async () => {
-      const editor = vscode.window.activeTextEditor;
-      if (!editor || editor.document.languageId !== 'markdown') {
+      const document = activeReviewDocument();
+      if (!document) {
         vscode.window.showWarningMessage('Open a Markdown file to copy review comments.');
         return;
       }
 
       // Only the active file's comments are collected; output fields and the
       // header prefix follow the user's copy settings.
-      const threads = controller.collectReviewThreads(editor.document);
+      const threads = controller.collectReviewThreads(document);
       if (threads.length === 0) {
         vscode.window.showInformationMessage('No review comments on this file yet.');
         return;
@@ -271,34 +294,34 @@ export function activate(context: vscode.ExtensionContext): void {
         formatStructured(threads, readSettings())
       );
       const count = threads.reduce((sum, t) => sum + t.comments.length, 0);
-      const file = vscode.workspace.asRelativePath(editor.document.uri);
+      const file = vscode.workspace.asRelativePath(document.uri);
       vscode.window.showInformationMessage(
         `Copied ${count} AI review comment(s) from "${file}" to clipboard.`
       );
     }),
 
     vscode.commands.registerCommand('md-ai-reviewer.saveToFile', async () => {
-      const editor = vscode.window.activeTextEditor;
-      if (!editor || editor.document.languageId !== 'markdown') {
+      const document = activeReviewDocument();
+      if (!document) {
         vscode.window.showWarningMessage('Open a Markdown file to save its review comments.');
         return;
       }
-      if (editor.document.uri.scheme !== 'file') {
+      if (document.uri.scheme !== 'file') {
         vscode.window.showWarningMessage(
           'Save the Markdown file to disk first, then save its review comments.'
         );
         return;
       }
 
-      const review = reviewForDocument(controller, editor.document);
+      const review = reviewForDocument(controller, document);
       if (!review) {
         vscode.window.showInformationMessage('No review comments on this file to save.');
         return;
       }
 
-      await writeReview(editor.document.uri, review);
+      await writeReview(document.uri, review);
       const total = review.comments.reduce((n, t) => n + t.comments.length, 0);
-      const name = vscode.workspace.asRelativePath(sidecarUri(editor.document.uri));
+      const name = vscode.workspace.asRelativePath(sidecarUri(document.uri));
       vscode.window.showInformationMessage(`Saved ${total} comment(s) to "${name}".`);
     }),
 
@@ -315,13 +338,68 @@ export function activate(context: vscode.ExtensionContext): void {
         return;
       }
 
-      const added = controller.loadStoredComments(editor.document, stored.comments);
+      const added = controller.loadStoredComments(
+        editor.document,
+        stored.comments.filter((t) => !t.selection)
+      );
+      controller.setSelectionThreads(
+        editor.document.uri.toString(),
+        stored.comments.filter((t) => !!t.selection)
+      );
       vscode.window.showInformationMessage(
         added > 0
           ? `Loaded ${added} saved review comment(s).`
           : 'Saved review comments are already loaded.'
       );
     }),
+
+    vscode.commands.registerCommand('md-ai-reviewer.openPreview', () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor || !isReviewableMarkdownDocument(editor.document)) {
+        vscode.window.showWarningMessage(
+          'Open a Markdown file to launch the AI Review preview.'
+        );
+        return;
+      }
+      ReviewPreviewPanel.createOrShow(
+        context.extensionUri,
+        controller,
+        editor.document,
+        vscode.ViewColumn.Beside
+      );
+    }),
+
+    // Like the built-in Ctrl+Shift+V: replace the active editor with the
+    // AI Review preview instead of opening it to the side.
+    vscode.commands.registerCommand('md-ai-reviewer.openPreviewInPlace', () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor || !isReviewableMarkdownDocument(editor.document)) {
+        vscode.window.showWarningMessage(
+          'Open a Markdown file to launch the AI Review preview.'
+        );
+        return;
+      }
+      ReviewPreviewPanel.createOrShow(
+        context.extensionUri,
+        controller,
+        editor.document,
+        editor.viewColumn ?? vscode.ViewColumn.Active
+      );
+    }),
+
+    // Side panel "jump": open the rendered preview and scroll to / open the
+    // thread there, rather than dropping the user into the raw Markdown source.
+    vscode.commands.registerCommand(
+      'md-ai-reviewer.openCommentInPreview',
+      async (uri: vscode.Uri, line: number) => {
+        await ReviewPreviewPanel.revealLine(
+          context.extensionUri,
+          controller,
+          uri,
+          line
+        );
+      }
+    ),
 
     vscode.commands.registerCommand('md-ai-reviewer.clearAll', async () => {
       controller.clearAll();

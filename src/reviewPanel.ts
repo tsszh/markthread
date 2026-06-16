@@ -160,16 +160,9 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
           break;
         case 'reveal':
           vscode.commands.executeCommand(
-            'md-ai-reviewer.revealComment',
+            'md-ai-reviewer.openCommentInPreview',
             vscode.Uri.parse(message.uri),
             message.line
-          );
-          break;
-        case 'quickReply':
-          this.controller.addQuickReply(
-            String(message.uri),
-            Number(message.line),
-            String(message.text ?? '')
           );
           break;
         case 'expandThreads':
@@ -427,6 +420,11 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
     padding: 6px 8px;
     border-left: 2px solid var(--vscode-panel-border, rgba(128,128,128,0.35));
     margin: 4px 0;
+    cursor: pointer;
+    border-radius: 0 4px 4px 0;
+  }
+  .comment:hover {
+    background: var(--vscode-list-hoverBackground, rgba(128,128,128,0.12));
   }
   .comment.reply {
     margin-left: 16px;
@@ -615,7 +613,6 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
   function render() {
     const files = latest.files;
     const activeLine = latest.activeLine;
-    const quickReplies = (latest.settings && latest.settings.quickReplies) || [];
 
     content.innerHTML = '';
     const total = files.reduce((n, f) => n + f.threads.reduce((m, t) => m + t.comments.length, 0), 0);
@@ -664,23 +661,13 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
           cEl.innerHTML =
             '<div class="author">' + esc(c.author) + tag + '</div>' +
             '<div class="body">' + esc(c.body) + '</div>';
+          // Clicking a comment opens the rendered preview at that thread, where
+          // it can be read, replied to and edited (the panel itself is read-only).
+          cEl.title = 'Open in AI Review preview';
+          cEl.addEventListener('click', () => {
+            vscode.postMessage({ type: 'reveal', uri: thread.uri, line: thread.line });
+          });
           commentsEl.appendChild(cEl);
-        }
-
-        if (quickReplies.length > 0) {
-          const pillsEl = document.createElement('div');
-          pillsEl.className = 'pills';
-          for (const text of quickReplies) {
-            const pill = document.createElement('button');
-            pill.className = 'pill';
-            pill.textContent = text;
-            pill.title = 'Reply "' + text + '"';
-            pill.addEventListener('click', () => {
-              vscode.postMessage({ type: 'quickReply', uri: thread.uri, line: thread.line, text });
-            });
-            pillsEl.appendChild(pill);
-          }
-          commentsEl.appendChild(pillsEl);
         }
 
         threadEl.appendChild(commentsEl);

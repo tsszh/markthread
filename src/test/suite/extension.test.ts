@@ -210,12 +210,12 @@ suite('Settings Suite', () => {
     const settings = readSettings();
     assert.deepStrictEqual(settings.quickReplies, DEFAULT_QUICK_REPLIES);
     assert.deepStrictEqual(DEFAULT_QUICK_REPLIES, [
-      '👍 Looks good',
-      '✅ Confirmed',
-      '❌ No',
-      '🤔 Please clarify',
-      '🛠️ Please fix',
-      '📌 TODO later',
+      'Looks good',
+      'Confirmed',
+      'No',
+      'Please clarify',
+      'Please fix',
+      'TODO later',
     ]);
     assert.strictEqual(settings.includeFileName, false);
     assert.strictEqual(settings.includeLineNumber, false);

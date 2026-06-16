@@ -1,14 +1,8 @@
 import * as vscode from 'vscode';
 import { FormatOptions, STRUCTURED_HEADER } from './core';
+import { DEFAULT_QUICK_REPLIES } from './renderer/defaults';
 
-export const DEFAULT_QUICK_REPLIES = [
-  '👍 Looks good',
-  '✅ Confirmed',
-  '❌ No',
-  '🤔 Please clarify',
-  '🛠️ Please fix',
-  '📌 TODO later',
-];
+export { DEFAULT_QUICK_REPLIES };
 
 export interface ReviewerSettings extends FormatOptions {
   quickReplies: string[];

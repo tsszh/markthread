@@ -145,3 +145,6 @@ vite.config.ts.timestamp-*
 # VS Code extension build output
 dist/
 *.vsix
+
+# Internal UI-audit working screenshots (not part of the published package)
+ui-audit-screenshots/
