@@ -39,7 +39,7 @@ function getNonce(): string {
  * Custom Markdown review preview. Renders the active document with the shared
  * preview client in a fully-controlled webview, so comments can be authored
  * per-line and per-selection. Line-level comments stay in sync with the native
- * gutter `CommentController`; everything is persisted to the `.ai-review.json`
+ * gutter `CommentController`; everything is persisted to the `.markthread.json`
  * sidecar.
  */
 export class ReviewPreviewPanel {
@@ -67,8 +67,8 @@ export class ReviewPreviewPanel {
     }
 
     const panel = vscode.window.createWebviewPanel(
-      'mdAiReviewerPreview',
-      'AI Review Preview',
+      'markThreadPreview',
+      'Review Preview',
       { viewColumn: column, preserveFocus: column === vscode.ViewColumn.Beside },
       {
         enableScripts: true,
@@ -165,7 +165,7 @@ export class ReviewPreviewPanel {
   private bind(document: vscode.TextDocument): void {
     this.document = document;
     this.ready = false;
-    this.panel.title = `AI Review Preview — ${vscode.workspace.asRelativePath(
+    this.panel.title = `Review Preview — ${vscode.workspace.asRelativePath(
       document.uri
     )}`;
     // Refresh the allowed resource roots so a doc in another folder can still
@@ -210,7 +210,7 @@ export class ReviewPreviewPanel {
       case 'reveal':
         if (typeof message.line === 'number') {
           await vscode.commands.executeCommand(
-            'md-ai-reviewer.revealComment',
+            'markthread.revealComment',
             this.document.uri,
             message.line
           );

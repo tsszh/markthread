@@ -951,8 +951,12 @@ body.mdr-app #mdr-preview pre:not(.mermaid) {
 /* --------------------------------------------------------------------------
    Charts / diagrams
    -------------------------------------------------------------------------- */
-.md-chart {
+.md-chart,
+.md-diagram {
   margin: 1.4rem 0;
+}
+.md-diagram > pre.mermaid {
+  margin: 0;
 }
 .md-chart .chart-canvas {
   width: 100%;

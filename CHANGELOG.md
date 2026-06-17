@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.25
+
+- Fixed Mermaid diagrams rendering "Syntax error in text" once a comment was attached to the diagram: the per-line comment marker was being appended inside the `<pre>` Mermaid reads, corrupting the diagram source. Mermaid blocks are now wrapped so the marker anchors to a wrapper element instead.
+- `Ctrl/Cmd+Shift+V` now toggles: pressing it while the review preview is focused jumps back to the Markdown source editor (previously it only opened the preview).
+- The quoted "line content" is no longer lost when copying/saving a review while the source file isn't open in an editor (e.g. after replacing it with the in-place preview). The source line is now captured per thread and used as a fallback.
+- Review commenting/preview now recognises the whole Markdown family by extension (`.md`, `.markdown`, `.mdx`, `.mdc`, `.qmd`, `.rmd`, …) as well as the `markdown` language id, so skill/rule files such as `SKILL.md` and Cursor `.mdc` files are reviewable even when the editor labels them with a different language id.
+
+## 0.1.24
+
+- Renamed the project to **MarkThread** — "Review Markdown with humans, then send feedback back to agents." The extension/package id is now `markthread`, the configuration namespace is `markThread.*`, command IDs are `markthread.*`, and the per-file review sidecar is now `<file>.markthread.json` (previously `<file>.ai-review.json`). Older sidecar files are not migrated automatically.
+
 ## 0.1.23
 
 - Standalone web app: added a "Clear all comments" action (in the ⋯ menu) that removes every comment for the current document after confirmation.

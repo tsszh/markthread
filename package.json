@@ -1,13 +1,13 @@
 {
-  "name": "md-ai-reviewer",
-  "displayName": "Markdown AI Reviewer",
-  "description": "Custom Markdown preview styling and line-by-line AI review comments for Markdown files.",
-  "version": "0.1.23",
+  "name": "markthread",
+  "displayName": "MarkThread",
+  "description": "Review Markdown with humans, then send feedback back to agents.",
+  "version": "0.1.25",
   "publisher": "local",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/tsszh/md-ai-reviewer.git"
+    "url": "https://github.com/tsszh/markthread.git"
   },
   "engines": {
     "vscode": "^1.75.0"
@@ -16,7 +16,8 @@
     "Other"
   ],
   "activationEvents": [
-    "onLanguage:markdown"
+    "onLanguage:markdown",
+    "onStartupFinished"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -28,131 +29,137 @@
     ],
     "commands": [
       {
-        "command": "md-ai-reviewer.openPreview",
-        "title": "Open AI Review Preview to the Side",
-        "category": "Markdown AI Reviewer",
+        "command": "markthread.openPreview",
+        "title": "Open Review Preview to the Side",
+        "category": "MarkThread",
         "icon": "$(comment-discussion)"
       },
       {
-        "command": "md-ai-reviewer.openPreviewInPlace",
-        "title": "Open AI Review Preview",
-        "category": "Markdown AI Reviewer",
+        "command": "markthread.openPreviewInPlace",
+        "title": "Open Review Preview",
+        "category": "MarkThread",
         "icon": "$(comment-discussion)"
       },
       {
-        "command": "md-ai-reviewer.openCommentInPreview",
-        "title": "Open Comment in AI Review Preview",
-        "category": "Markdown AI Reviewer"
+        "command": "markthread.openCommentInPreview",
+        "title": "Open Comment in Review Preview",
+        "category": "MarkThread"
       },
       {
-        "command": "md-ai-reviewer.copyToClipboard",
-        "title": "Copy AI Review to Clipboard",
-        "category": "Markdown AI Reviewer",
+        "command": "markthread.openSource",
+        "title": "Open Markdown Source",
+        "category": "MarkThread",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "markthread.copyToClipboard",
+        "title": "Copy Review to Clipboard",
+        "category": "MarkThread",
         "icon": "$(clippy)"
       },
       {
-        "command": "md-ai-reviewer.saveToFile",
-        "title": "Save AI Review Comments to File",
-        "category": "Markdown AI Reviewer",
+        "command": "markthread.saveToFile",
+        "title": "Save Review Comments to File",
+        "category": "MarkThread",
         "icon": "$(save)"
       },
       {
-        "command": "md-ai-reviewer.loadFromFile",
-        "title": "Load AI Review Comments from File",
-        "category": "Markdown AI Reviewer",
+        "command": "markthread.loadFromFile",
+        "title": "Load Review Comments from File",
+        "category": "MarkThread",
         "icon": "$(refresh)"
       },
       {
-        "command": "md-ai-reviewer.clearAll",
-        "title": "Clear All AI Review Comments",
-        "category": "Markdown AI Reviewer",
+        "command": "markthread.clearAll",
+        "title": "Clear All Review Comments",
+        "category": "MarkThread",
         "icon": "$(clear-all)"
       },
       {
-        "command": "md-ai-reviewer.revealComment",
+        "command": "markthread.revealComment",
         "title": "Reveal Review Comment",
-        "category": "Markdown AI Reviewer"
+        "category": "MarkThread"
       },
       {
-        "command": "md-ai-reviewer.createComment",
+        "command": "markthread.createComment",
         "title": "Add Review Comment",
-        "category": "Markdown AI Reviewer",
+        "category": "MarkThread",
         "enablement": "!commentIsEmpty"
       },
       {
-        "command": "md-ai-reviewer.replyComment",
+        "command": "markthread.replyComment",
         "title": "Reply",
-        "category": "Markdown AI Reviewer",
+        "category": "MarkThread",
         "enablement": "!commentIsEmpty"
       },
       {
-        "command": "md-ai-reviewer.deleteComment",
+        "command": "markthread.deleteComment",
         "title": "Delete Comment",
-        "category": "Markdown AI Reviewer",
+        "category": "MarkThread",
         "icon": "$(trash)"
       },
       {
-        "command": "md-ai-reviewer.deleteThread",
+        "command": "markthread.deleteThread",
         "title": "Delete Thread",
-        "category": "Markdown AI Reviewer",
+        "category": "MarkThread",
         "icon": "$(trash)"
       },
       {
-        "command": "md-ai-reviewer.editComment",
+        "command": "markthread.editComment",
         "title": "Edit Comment",
-        "category": "Markdown AI Reviewer",
+        "category": "MarkThread",
         "icon": "$(edit)"
       },
       {
-        "command": "md-ai-reviewer.saveComment",
+        "command": "markthread.saveComment",
         "title": "Save",
-        "category": "Markdown AI Reviewer"
+        "category": "MarkThread"
       },
       {
-        "command": "md-ai-reviewer.cancelEditComment",
+        "command": "markthread.cancelEditComment",
         "title": "Cancel",
-        "category": "Markdown AI Reviewer"
+        "category": "MarkThread"
       },
       {
-        "command": "md-ai-reviewer.cancelEdit",
+        "command": "markthread.cancelEdit",
         "title": "Cancel Comment Edit",
-        "category": "Markdown AI Reviewer"
+        "category": "MarkThread"
       },
       {
-        "command": "md-ai-reviewer.quickReply",
+        "command": "markthread.quickReply",
         "title": "Quick Reply",
-        "category": "Markdown AI Reviewer"
+        "category": "MarkThread"
       },
       {
-        "command": "md-ai-reviewer.expandAllThreads",
+        "command": "markthread.expandAllThreads",
         "title": "Expand All Review Comments",
-        "category": "Markdown AI Reviewer",
+        "category": "MarkThread",
         "icon": "$(expand-all)"
       },
       {
-        "command": "md-ai-reviewer.collapseAllThreads",
+        "command": "markthread.collapseAllThreads",
         "title": "Collapse All Review Comments",
-        "category": "Markdown AI Reviewer",
+        "category": "MarkThread",
         "icon": "$(collapse-all)"
       }
     ],
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "md-ai-reviewer",
-          "title": "AI Review",
+          "id": "markthread",
+          "title": "MarkThread",
           "icon": "media/review-icon.svg"
         }
       ]
     },
     "views": {
-      "md-ai-reviewer": [
+      "markthread": [
         {
-          "id": "md-ai-reviewer.commentsView",
+          "id": "markthread.commentsView",
           "name": "Review Comments",
           "type": "webview",
           "icon": "media/review-icon.svg",
-          "contextualTitle": "AI Review"
+          "contextualTitle": "MarkThread"
         }
       ]
     },
@@ -160,29 +167,35 @@
       {
         "key": "ctrl+shift+v",
         "mac": "cmd+shift+v",
-        "command": "md-ai-reviewer.openPreviewInPlace",
-        "when": "editorLangId == markdown && editorTextFocus && !notebookEditorFocused"
+        "command": "markthread.openPreviewInPlace",
+        "when": "editorTextFocus && !notebookEditorFocused && (editorLangId == markdown || resourceExtname =~ /\\.(md|markdown|mdown|mkd|mkdn|mdwn|mdx|mdc|qmd|rmd)$/i)"
+      },
+      {
+        "key": "ctrl+shift+v",
+        "mac": "cmd+shift+v",
+        "command": "markthread.openSource",
+        "when": "activeWebviewPanelId == markThreadPreview"
       },
       {
         "key": "ctrl+k v",
         "mac": "cmd+k v",
-        "command": "md-ai-reviewer.openPreview",
-        "when": "editorLangId == markdown && editorTextFocus && !notebookEditorFocused"
+        "command": "markthread.openPreview",
+        "when": "editorTextFocus && !notebookEditorFocused && (editorLangId == markdown || resourceExtname =~ /\\.(md|markdown|mdown|mkd|mkdn|mdwn|mdx|mdc|qmd|rmd)$/i)"
       },
       {
         "key": "enter",
-        "command": "md-ai-reviewer.submit",
+        "command": "markthread.submit",
         "when": "commentEditorFocused && !suggestWidgetVisible"
       },
       {
         "key": "ctrl+enter",
         "mac": "cmd+enter",
-        "command": "md-ai-reviewer.submit",
+        "command": "markthread.submit",
         "when": "commentEditorFocused"
       },
       {
         "key": "alt+enter",
-        "command": "md-ai-reviewer.submit",
+        "command": "markthread.submit",
         "when": "commentEditorFocused"
       },
       {
@@ -195,159 +208,163 @@
       },
       {
         "key": "escape",
-        "command": "md-ai-reviewer.cancelEdit",
+        "command": "markthread.cancelEdit",
         "when": "commentEditorFocused && !suggestWidgetVisible"
       }
     ],
     "menus": {
       "editor/title": [
         {
-          "command": "md-ai-reviewer.openPreview",
-          "when": "editorLangId == markdown",
+          "command": "markthread.openPreview",
+          "when": "editorLangId == markdown || resourceExtname =~ /\\.(md|markdown|mdown|mkd|mkdn|mdwn|mdx|mdc|qmd|rmd)$/i",
           "group": "navigation@-1"
         }
       ],
       "commandPalette": [
         {
-          "command": "md-ai-reviewer.openPreview",
-          "when": "editorLangId == markdown"
+          "command": "markthread.openPreview",
+          "when": "editorLangId == markdown || resourceExtname =~ /\\.(md|markdown|mdown|mkd|mkdn|mdwn|mdx|mdc|qmd|rmd)$/i"
         },
         {
-          "command": "md-ai-reviewer.openPreviewInPlace",
-          "when": "editorLangId == markdown"
+          "command": "markthread.openPreviewInPlace",
+          "when": "editorLangId == markdown || resourceExtname =~ /\\.(md|markdown|mdown|mkd|mkdn|mdwn|mdx|mdc|qmd|rmd)$/i"
         },
         {
-          "command": "md-ai-reviewer.openCommentInPreview",
+          "command": "markthread.openCommentInPreview",
           "when": "false"
         },
         {
-          "command": "md-ai-reviewer.copyToClipboard",
-          "when": "editorLangId == markdown"
-        },
-        {
-          "command": "md-ai-reviewer.saveToFile",
-          "when": "editorLangId == markdown"
-        },
-        {
-          "command": "md-ai-reviewer.loadFromFile",
-          "when": "editorLangId == markdown"
-        },
-        {
-          "command": "md-ai-reviewer.clearAll",
-          "when": "editorLangId == markdown"
-        },
-        {
-          "command": "md-ai-reviewer.createComment",
+          "command": "markthread.openSource",
           "when": "false"
         },
         {
-          "command": "md-ai-reviewer.replyComment",
+          "command": "markthread.copyToClipboard",
+          "when": "editorLangId == markdown || resourceExtname =~ /\\.(md|markdown|mdown|mkd|mkdn|mdwn|mdx|mdc|qmd|rmd)$/i"
+        },
+        {
+          "command": "markthread.saveToFile",
+          "when": "editorLangId == markdown || resourceExtname =~ /\\.(md|markdown|mdown|mkd|mkdn|mdwn|mdx|mdc|qmd|rmd)$/i"
+        },
+        {
+          "command": "markthread.loadFromFile",
+          "when": "editorLangId == markdown || resourceExtname =~ /\\.(md|markdown|mdown|mkd|mkdn|mdwn|mdx|mdc|qmd|rmd)$/i"
+        },
+        {
+          "command": "markthread.clearAll",
+          "when": "editorLangId == markdown || resourceExtname =~ /\\.(md|markdown|mdown|mkd|mkdn|mdwn|mdx|mdc|qmd|rmd)$/i"
+        },
+        {
+          "command": "markthread.createComment",
           "when": "false"
         },
         {
-          "command": "md-ai-reviewer.deleteComment",
+          "command": "markthread.replyComment",
           "when": "false"
         },
         {
-          "command": "md-ai-reviewer.deleteThread",
+          "command": "markthread.deleteComment",
           "when": "false"
         },
         {
-          "command": "md-ai-reviewer.revealComment",
+          "command": "markthread.deleteThread",
           "when": "false"
         },
         {
-          "command": "md-ai-reviewer.editComment",
+          "command": "markthread.revealComment",
           "when": "false"
         },
         {
-          "command": "md-ai-reviewer.saveComment",
+          "command": "markthread.editComment",
           "when": "false"
         },
         {
-          "command": "md-ai-reviewer.cancelEditComment",
+          "command": "markthread.saveComment",
           "when": "false"
         },
         {
-          "command": "md-ai-reviewer.cancelEdit",
+          "command": "markthread.cancelEditComment",
           "when": "false"
         },
         {
-          "command": "md-ai-reviewer.quickReply",
+          "command": "markthread.cancelEdit",
           "when": "false"
         },
         {
-          "command": "md-ai-reviewer.expandAllThreads",
-          "when": "editorLangId == markdown"
+          "command": "markthread.quickReply",
+          "when": "false"
         },
         {
-          "command": "md-ai-reviewer.collapseAllThreads",
-          "when": "editorLangId == markdown"
+          "command": "markthread.expandAllThreads",
+          "when": "editorLangId == markdown || resourceExtname =~ /\\.(md|markdown|mdown|mkd|mkdn|mdwn|mdx|mdc|qmd|rmd)$/i"
+        },
+        {
+          "command": "markthread.collapseAllThreads",
+          "when": "editorLangId == markdown || resourceExtname =~ /\\.(md|markdown|mdown|mkd|mkdn|mdwn|mdx|mdc|qmd|rmd)$/i"
         }
       ],
       "comments/commentThread/context": [
         {
-          "command": "md-ai-reviewer.createComment",
+          "command": "markthread.createComment",
           "group": "inline@1",
-          "when": "commentController == md-ai-reviewer && commentThreadIsEmpty"
+          "when": "commentController == markthread && commentThreadIsEmpty"
         },
         {
-          "command": "md-ai-reviewer.replyComment",
+          "command": "markthread.replyComment",
           "group": "inline@1",
-          "when": "commentController == md-ai-reviewer && !commentThreadIsEmpty"
+          "when": "commentController == markthread && !commentThreadIsEmpty"
         },
         {
-          "command": "md-ai-reviewer.quickReply",
+          "command": "markthread.quickReply",
           "group": "inline@2",
-          "when": "commentController == md-ai-reviewer"
+          "when": "commentController == markthread"
         }
       ],
       "comments/commentThread/title": [
         {
-          "command": "md-ai-reviewer.expandAllThreads",
+          "command": "markthread.expandAllThreads",
           "group": "navigation@1",
-          "when": "commentController == md-ai-reviewer"
+          "when": "commentController == markthread"
         },
         {
-          "command": "md-ai-reviewer.collapseAllThreads",
+          "command": "markthread.collapseAllThreads",
           "group": "navigation@2",
-          "when": "commentController == md-ai-reviewer"
+          "when": "commentController == markthread"
         },
         {
-          "command": "md-ai-reviewer.deleteThread",
+          "command": "markthread.deleteThread",
           "group": "navigation@3",
-          "when": "commentController == md-ai-reviewer"
+          "when": "commentController == markthread"
         }
       ],
       "comments/comment/title": [
         {
-          "command": "md-ai-reviewer.editComment",
+          "command": "markthread.editComment",
           "group": "inline@1",
-          "when": "commentController == md-ai-reviewer && comment == editable"
+          "when": "commentController == markthread && comment == editable"
         },
         {
-          "command": "md-ai-reviewer.deleteComment",
+          "command": "markthread.deleteComment",
           "group": "inline@2",
-          "when": "commentController == md-ai-reviewer"
+          "when": "commentController == markthread"
         }
       ],
       "comments/comment/context": [
         {
-          "command": "md-ai-reviewer.saveComment",
+          "command": "markthread.saveComment",
           "group": "inline@1",
-          "when": "commentController == md-ai-reviewer"
+          "when": "commentController == markthread"
         },
         {
-          "command": "md-ai-reviewer.cancelEditComment",
+          "command": "markthread.cancelEditComment",
           "group": "inline@2",
-          "when": "commentController == md-ai-reviewer"
+          "when": "commentController == markthread"
         }
       ]
     },
     "configuration": {
-      "title": "Markdown AI Reviewer",
+      "title": "MarkThread",
       "properties": {
-        "mdAiReviewer.quickReplies": {
+        "markThread.quickReplies": {
           "type": "array",
           "items": {
             "type": "string"
@@ -360,32 +377,32 @@
             "Please fix",
             "TODO later"
           ],
-          "description": "Quick reply texts shown as pills in the AI Review panel and offered by the Quick Reply button in comment threads."
+          "description": "Quick reply texts shown as pills in the Review panel and offered by the Quick Reply button in comment threads."
         },
-        "mdAiReviewer.copy.includeFileName": {
+        "markThread.copy.includeFileName": {
           "type": "boolean",
           "default": false,
           "description": "Include the file name in each copied review comment."
         },
-        "mdAiReviewer.copy.includeLineNumber": {
+        "markThread.copy.includeLineNumber": {
           "type": "boolean",
           "default": false,
           "description": "Include the line number in each copied review comment."
         },
-        "mdAiReviewer.copy.includeLineText": {
+        "markThread.copy.includeLineText": {
           "type": "boolean",
           "default": true,
           "description": "Include the quoted source line in each copied review comment."
         },
-        "mdAiReviewer.copy.includeComment": {
+        "markThread.copy.includeComment": {
           "type": "boolean",
           "default": true,
           "description": "Include the comment text in each copied review comment."
         },
-        "mdAiReviewer.copy.headerTemplate": {
+        "markThread.copy.headerTemplate": {
           "type": "string",
           "editPresentation": "multilineText",
-          "default": "# AI Review Comments\n\nPlease address the following review comments on the Markdown document below.\nEach item quotes the source line it refers to.\n\n---\n\n",
+          "default": "# Review Comments\n\nPlease address the following review comments on the Markdown document below.\nEach item quotes the source line it refers to.\n\n---\n\n",
           "description": "Prefix (header/prompt) prepended to the copied review."
         }
       }

@@ -27,7 +27,7 @@ const LAST_DOC_KEY = 'mdr-last-doc';
 // array so the fenced code blocks don't need backtick escaping.
 const SAMPLE_DOC = [
   '---',
-  'title: Markdown AI Reviewer — Sample',
+  'title: MarkThread — Sample',
   'owner: tsszh',
   'status: demo',
   'tags: [markdown, review, charts]',
@@ -41,7 +41,7 @@ const SAMPLE_DOC = [
   '## Text formatting',
   '',
   'Mix of **bold**, *italic*, ~~strikethrough~~, `inline code`, and a',
-  '[link](https://github.com/tsszh/md-ai-reviewer).',
+  '[link](https://github.com/tsszh/markthread).',
   '',
   '## Lists',
   '',
@@ -273,7 +273,7 @@ const appbar = document.createElement('header');
 appbar.className = 'mdr-appbar';
 appbar.innerHTML =
   '<div class="mdr-brand"><span class="mdr-logo" aria-hidden="true">✸</span>' +
-  '<span class="mdr-brand-name">Markdown Review</span></div>' +
+  '<span class="mdr-brand-name">MarkThread</span></div>' +
   '<div class="mdr-vtabs" role="tablist" aria-label="View">' +
   '<button type="button" class="mdr-vtab active" data-view="read" role="tab" aria-selected="true">Read</button>' +
   '<button type="button" class="mdr-vtab" data-view="source" role="tab" aria-selected="false">Source</button>' +
@@ -427,7 +427,7 @@ function downloadReview(): void {
   const blob = new Blob([exportPayload()], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'md-review.json';
+  a.download = 'markthread-review.json';
   a.click();
   URL.revokeObjectURL(a.href);
 }
@@ -507,7 +507,7 @@ async function shareReview(): Promise<void> {
     const blob = new Blob([text], { type: 'text/plain' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'md-review.txt';
+    a.download = 'markthread-review.txt';
     a.click();
     URL.revokeObjectURL(a.href);
     showToast('Clipboard unavailable — downloaded the review summary instead', 'info');

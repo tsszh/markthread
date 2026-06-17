@@ -7,7 +7,6 @@ import { readSettings } from './settings';
 import {
   deleteReview,
   isReviewableMarkdownDocument,
-  isSidecar,
   readReview,
   sidecarUri,
   StoredReview,
@@ -84,7 +83,7 @@ export function activate(context: vscode.ExtensionContext): void {
     ),
 
     vscode.commands.registerCommand(
-      'md-ai-reviewer.revealComment',
+      'markthread.revealComment',
       async (uri: vscode.Uri, line: number) => {
         // Untitled documents cannot be re-opened by URI; reuse the live one.
         const doc =
@@ -106,14 +105,10 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // --- Optional per-file persistence (sidecar) -----------------------------
   // Saving is manual (Save to file). When a Markdown file is opened, any
-  // previously-saved `<file>.ai-review.json` sidecar is auto-loaded so the
+  // previously-saved `<file>.markthread.json` sidecar is auto-loaded so the
   // review reliably comes back. Commit sidecars to share with a team.
   async function loadForDocument(document: vscode.TextDocument): Promise<void> {
-    if (
-      document.languageId !== 'markdown' ||
-      document.uri.scheme !== 'file' ||
-      isSidecar(document.uri)
-    ) {
+    if (!isReviewableMarkdownDocument(document) || document.uri.scheme !== 'file') {
       return;
     }
     const stored = await readReview(document.uri);
@@ -153,7 +148,7 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
     // Settings edited outside the panel (VS Code Settings UI) refresh it too.
     vscode.workspace.onDidChangeConfiguration((event) => {
-      if (event.affectsConfiguration('mdAiReviewer')) {
+      if (event.affectsConfiguration('markThread')) {
         panelProvider.refresh();
       }
     })
@@ -167,7 +162,7 @@ export function activate(context: vscode.ExtensionContext): void {
     // Keyboard submit wrapper. The built-in submit command differs across
     // builds (editor.action.submitComment vs workbench.action.submitComment),
     // so try both. Bound to several keys because Cursor's AI grabs Enter/Ctrl+Enter.
-    vscode.commands.registerCommand('md-ai-reviewer.submit', async () => {
+    vscode.commands.registerCommand('markthread.submit', async () => {
       for (const id of [
         'editor.action.submitComment',
         'workbench.action.submitComment',
@@ -183,7 +178,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
     // Submit button for an empty thread (first comment created via the gutter +).
     vscode.commands.registerCommand(
-      'md-ai-reviewer.createComment',
+      'markthread.createComment',
       (reply: vscode.CommentReply) => {
         controller.addComment(reply);
       }
@@ -191,14 +186,14 @@ export function activate(context: vscode.ExtensionContext): void {
 
     // Reply button for a thread that already has comments.
     vscode.commands.registerCommand(
-      'md-ai-reviewer.replyComment',
+      'markthread.replyComment',
       (reply: vscode.CommentReply) => {
         controller.addComment(reply);
       }
     ),
 
     vscode.commands.registerCommand(
-      'md-ai-reviewer.deleteComment',
+      'markthread.deleteComment',
       (comment: ReviewCommentItem) => {
         controller.deleteComment(comment);
       }
@@ -206,21 +201,21 @@ export function activate(context: vscode.ExtensionContext): void {
 
     // In-place editing of an already submitted comment.
     vscode.commands.registerCommand(
-      'md-ai-reviewer.editComment',
+      'markthread.editComment',
       (comment: ReviewCommentItem) => {
         controller.editComment(comment);
       }
     ),
 
     vscode.commands.registerCommand(
-      'md-ai-reviewer.saveComment',
+      'markthread.saveComment',
       (comment: ReviewCommentItem) => {
         controller.saveComment(comment);
       }
     ),
 
     vscode.commands.registerCommand(
-      'md-ai-reviewer.cancelEditComment',
+      'markthread.cancelEditComment',
       (comment: ReviewCommentItem) => {
         controller.cancelEditComment(comment);
       }
@@ -228,7 +223,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
     // Escape in the comment editor: cancel an in-progress comment edit, or
     // fall back to VS Code's default behavior (hide the comment widget).
-    vscode.commands.registerCommand('md-ai-reviewer.cancelEdit', async () => {
+    vscode.commands.registerCommand('markthread.cancelEdit', async () => {
       if (!controller.cancelAllEdits()) {
         await vscode.commands.executeCommand('workbench.action.hideComment');
       }
@@ -237,12 +232,12 @@ export function activate(context: vscode.ExtensionContext): void {
     // Quick reply from the editor comment widget: pick one of the configured
     // replies and submit it directly to the thread.
     vscode.commands.registerCommand(
-      'md-ai-reviewer.quickReply',
+      'markthread.quickReply',
       async (reply: vscode.CommentReply) => {
         const { quickReplies } = readSettings();
         if (quickReplies.length === 0) {
           vscode.window.showInformationMessage(
-            'No quick replies configured. Add some in the AI Review panel settings.'
+            'No quick replies configured. Add some in the MarkThread panel settings.'
           );
           return;
         }
@@ -256,26 +251,26 @@ export function activate(context: vscode.ExtensionContext): void {
     ),
 
     // Expand/collapse every review thread shown in the Markdown editor.
-    vscode.commands.registerCommand('md-ai-reviewer.expandAllThreads', () => {
+    vscode.commands.registerCommand('markthread.expandAllThreads', () => {
       controller.setAllCollapsibleState(
         vscode.CommentThreadCollapsibleState.Expanded
       );
     }),
 
-    vscode.commands.registerCommand('md-ai-reviewer.collapseAllThreads', () => {
+    vscode.commands.registerCommand('markthread.collapseAllThreads', () => {
       controller.setAllCollapsibleState(
         vscode.CommentThreadCollapsibleState.Collapsed
       );
     }),
 
     vscode.commands.registerCommand(
-      'md-ai-reviewer.deleteThread',
+      'markthread.deleteThread',
       (thread: vscode.CommentThread) => {
         controller.deleteThread(thread);
       }
     ),
 
-    vscode.commands.registerCommand('md-ai-reviewer.copyToClipboard', async () => {
+    vscode.commands.registerCommand('markthread.copyToClipboard', async () => {
       const document = activeReviewDocument();
       if (!document) {
         vscode.window.showWarningMessage('Open a Markdown file to copy review comments.');
@@ -296,11 +291,11 @@ export function activate(context: vscode.ExtensionContext): void {
       const count = threads.reduce((sum, t) => sum + t.comments.length, 0);
       const file = vscode.workspace.asRelativePath(document.uri);
       vscode.window.showInformationMessage(
-        `Copied ${count} AI review comment(s) from "${file}" to clipboard.`
+        `Copied ${count} review comment(s) from "${file}" to clipboard.`
       );
     }),
 
-    vscode.commands.registerCommand('md-ai-reviewer.saveToFile', async () => {
+    vscode.commands.registerCommand('markthread.saveToFile', async () => {
       const document = activeReviewDocument();
       if (!document) {
         vscode.window.showWarningMessage('Open a Markdown file to save its review comments.');
@@ -325,9 +320,9 @@ export function activate(context: vscode.ExtensionContext): void {
       vscode.window.showInformationMessage(`Saved ${total} comment(s) to "${name}".`);
     }),
 
-    vscode.commands.registerCommand('md-ai-reviewer.loadFromFile', async () => {
+    vscode.commands.registerCommand('markthread.loadFromFile', async () => {
       const editor = vscode.window.activeTextEditor;
-      if (!editor || editor.document.languageId !== 'markdown') {
+      if (!editor || !isReviewableMarkdownDocument(editor.document)) {
         vscode.window.showWarningMessage('Open a Markdown file to load its saved review comments.');
         return;
       }
@@ -353,11 +348,11 @@ export function activate(context: vscode.ExtensionContext): void {
       );
     }),
 
-    vscode.commands.registerCommand('md-ai-reviewer.openPreview', () => {
+    vscode.commands.registerCommand('markthread.openPreview', () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor || !isReviewableMarkdownDocument(editor.document)) {
         vscode.window.showWarningMessage(
-          'Open a Markdown file to launch the AI Review preview.'
+          'Open a Markdown file to launch the review preview.'
         );
         return;
       }
@@ -370,12 +365,12 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
 
     // Like the built-in Ctrl+Shift+V: replace the active editor with the
-    // AI Review preview instead of opening it to the side.
-    vscode.commands.registerCommand('md-ai-reviewer.openPreviewInPlace', () => {
+    // review preview instead of opening it to the side.
+    vscode.commands.registerCommand('markthread.openPreviewInPlace', () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor || !isReviewableMarkdownDocument(editor.document)) {
         vscode.window.showWarningMessage(
-          'Open a Markdown file to launch the AI Review preview.'
+          'Open a Markdown file to launch the review preview.'
         );
         return;
       }
@@ -387,10 +382,21 @@ export function activate(context: vscode.ExtensionContext): void {
       );
     }),
 
+    // Counterpart to the in-place preview: when the review preview webview is
+    // focused, the same keybinding (Ctrl/Cmd+Shift+V) jumps back to the
+    // Markdown source editor, so the shortcut toggles between the two.
+    vscode.commands.registerCommand('markthread.openSource', async () => {
+      const document = ReviewPreviewPanel.activeDocument;
+      if (!document) {
+        return;
+      }
+      await vscode.window.showTextDocument(document, { preview: false });
+    }),
+
     // Side panel "jump": open the rendered preview and scroll to / open the
     // thread there, rather than dropping the user into the raw Markdown source.
     vscode.commands.registerCommand(
-      'md-ai-reviewer.openCommentInPreview',
+      'markthread.openCommentInPreview',
       async (uri: vscode.Uri, line: number) => {
         await ReviewPreviewPanel.revealLine(
           context.extensionUri,
@@ -401,7 +407,7 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     ),
 
-    vscode.commands.registerCommand('md-ai-reviewer.clearAll', async () => {
+    vscode.commands.registerCommand('markthread.clearAll', async () => {
       controller.clearAll();
 
       // Also remove the active file's sidecar so cleared comments don't
@@ -410,14 +416,13 @@ export function activate(context: vscode.ExtensionContext): void {
       const document = editor?.document;
       if (
         document &&
-        document.languageId === 'markdown' &&
-        document.uri.scheme === 'file' &&
-        !isSidecar(document.uri)
+        isReviewableMarkdownDocument(document) &&
+        document.uri.scheme === 'file'
       ) {
         await deleteReview(document.uri);
       }
 
-      vscode.window.showInformationMessage('Cleared all AI review comment threads.');
+      vscode.window.showInformationMessage('Cleared all review comment threads.');
     })
   );
 }

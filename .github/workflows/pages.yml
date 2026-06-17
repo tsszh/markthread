@@ -2,7 +2,7 @@ name: Deploy Web App to GitHub Pages
 
 # Builds the self-contained standalone review page (dist/standalone) and
 # publishes it to GitHub Pages so anyone can try the reviewer in a browser at
-# https://<owner>.github.io/md-ai-reviewer/ — no install required.
+# https://<owner>.github.io/markthread/ — no install required.
 #
 # One-time setup: in the repo, go to Settings → Pages → "Build and deployment"
 # and set Source to "GitHub Actions".

@@ -11,9 +11,9 @@ export interface ReviewThread {
 
 /**
  * Default prefix prepended to the copied review. Must stay in sync with the
- * `mdAiReviewer.copy.headerTemplate` default declared in package.json.
+ * `markThread.copy.headerTemplate` default declared in package.json.
  */
-export const STRUCTURED_HEADER = `# AI Review Comments
+export const STRUCTURED_HEADER = `# Review Comments
 
 Please address the following review comments on the Markdown document below.
 Each item quotes the source line it refers to.

@@ -122,7 +122,7 @@ suite('Storage Suite', () => {
 
   test('sidecar write/read/delete round-trips on disk', async () => {
     const docUri = vscode.Uri.file(
-      path.join(os.tmpdir(), `md-ai-reviewer-${Date.now()}.md`)
+      path.join(os.tmpdir(), `markthread-${Date.now()}.md`)
     );
     const review = {
       version: 1,
@@ -164,7 +164,7 @@ suite('Reviewable Document Suite', () => {
   test('sidecar files are not reviewable', () => {
     const fake = {
       languageId: 'markdown',
-      uri: vscode.Uri.file('/tmp/readme.md.ai-review.json'),
+      uri: vscode.Uri.file('/tmp/readme.md.markthread.json'),
     } as vscode.TextDocument;
     assert.strictEqual(isReviewableMarkdownDocument(fake), false);
   });
@@ -172,7 +172,7 @@ suite('Reviewable Document Suite', () => {
 
 suite('Extension Test Suite', () => {
   test('Extension activates for markdown', async () => {
-    const extension = vscode.extensions.getExtension('local.md-ai-reviewer');
+    const extension = vscode.extensions.getExtension('local.markthread');
     assert.ok(extension, 'Extension should be discoverable');
     await extension!.activate();
     assert.strictEqual(extension!.isActive, true);
@@ -181,22 +181,22 @@ suite('Extension Test Suite', () => {
   test('All commands are registered', async () => {
     const commands = await vscode.commands.getCommands(true);
     const expected = [
-      'md-ai-reviewer.copyToClipboard',
-      'md-ai-reviewer.saveToFile',
-      'md-ai-reviewer.loadFromFile',
-      'md-ai-reviewer.clearAll',
-      'md-ai-reviewer.submit',
-      'md-ai-reviewer.createComment',
-      'md-ai-reviewer.replyComment',
-      'md-ai-reviewer.deleteComment',
-      'md-ai-reviewer.deleteThread',
-      'md-ai-reviewer.editComment',
-      'md-ai-reviewer.saveComment',
-      'md-ai-reviewer.cancelEditComment',
-      'md-ai-reviewer.cancelEdit',
-      'md-ai-reviewer.quickReply',
-      'md-ai-reviewer.expandAllThreads',
-      'md-ai-reviewer.collapseAllThreads',
+      'markthread.copyToClipboard',
+      'markthread.saveToFile',
+      'markthread.loadFromFile',
+      'markthread.clearAll',
+      'markthread.submit',
+      'markthread.createComment',
+      'markthread.replyComment',
+      'markthread.deleteComment',
+      'markthread.deleteThread',
+      'markthread.editComment',
+      'markthread.saveComment',
+      'markthread.cancelEditComment',
+      'markthread.cancelEdit',
+      'markthread.quickReply',
+      'markthread.expandAllThreads',
+      'markthread.collapseAllThreads',
     ];
 
     for (const command of expected) {

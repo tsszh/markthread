@@ -92,9 +92,13 @@ function createMd(): { md: MarkdownIt; getFrontMatter: () => string } {
       : '';
 
     if (info === 'mermaid') {
-      return `<pre class="mermaid"${lineAttrs}>${md.utils.escapeHtml(
+      // Wrap the diagram so the per-line comment marker anchors to the wrapper,
+      // not the <pre> Mermaid renders from. Mermaid reads the element's
+      // textContent asynchronously, so a marker appended directly into the
+      // <pre> would corrupt the diagram source ("Syntax error in text").
+      return `<div class="md-diagram mermaid-block"${lineAttrs}><pre class="mermaid">${md.utils.escapeHtml(
         token.content
-      )}</pre>\n`;
+      )}</pre></div>\n`;
     }
     if (info === 'echarts') {
       return chartContainer('echarts-chart', token.content, lineAttrs, md);

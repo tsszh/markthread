@@ -1,5 +1,5 @@
 ---
-title: Markdown AI Reviewer Rich Sample
+title: MarkThread Rich Sample
 author: tsszh
 created: 2026-06-03
 status: draft
@@ -17,7 +17,7 @@ references:
   - https://github.com/microsoft/vscode/blob/main/extensions/markdown-language-features/src/preview/preview.ts
   - https://code.visualstudio.com/api/extension-guides/webview-views
   - https://developer.mozilla.org/en-US/docs/Web/CSS/overflow-wrap
-homepage: https://github.com/tsszh/md-ai-reviewer/blob/main/README.md
+homepage: https://github.com/tsszh/markthread/blob/main/README.md
 description: >
   A long, folded multi-line description used to verify how the properties
   renderer handles block scalars that wrap across several source lines
@@ -30,7 +30,7 @@ inline_tags: [markdown, preview, frontmatter]
 
 # Rich Component Sample
 
-A full component showcase for **md-ai-reviewer** preview styling. The block above
+A full component showcase for **markthread** preview styling. The block above
 is an Obsidian-style YAML *properties* frontmatter.
 
 ## Headings
@@ -59,6 +59,7 @@ flowchart TD
   store --> inlineCmd["exportInline"]
   store --> clearCmd["clearAll"]
 ```
+
 
 ```mermaid
 sequenceDiagram
@@ -146,7 +147,7 @@ function greet(name: string): string {
 
 ## Image
 
-![md-ai-reviewer sample image](./assets/sample-image.png)
+![markthread sample image](./assets/sample-image.png)
 
 ---
 

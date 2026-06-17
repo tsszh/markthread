@@ -27,7 +27,7 @@ export interface StoredReview {
   comments: StoredThread[];
 }
 
-const SIDECAR_SUFFIX = '.ai-review.json';
+const SIDECAR_SUFFIX = '.markthread.json';
 
 /** Sibling sidecar file that stores a Markdown file's review comments. */
 export function sidecarUri(documentUri: vscode.Uri): vscode.Uri {
@@ -39,17 +39,51 @@ export function isSidecar(uri: vscode.Uri): boolean {
 }
 
 /**
- * Whether a document is a Markdown file we review. Includes unsaved
- * (`untitled`) documents; excludes the comment input box (scheme `comment`)
- * and our own sidecar files.
+ * Markdown-family file extensions we treat as reviewable. Covers plain
+ * Markdown plus skill/rule/doc variants (Cursor `.mdc`, MDX, R Markdown, etc.)
+ * that editors don't always assign the `markdown` language id.
+ */
+const MARKDOWN_EXTENSIONS = [
+  '.md',
+  '.markdown',
+  '.mdown',
+  '.mkd',
+  '.mkdn',
+  '.mdwn',
+  '.mdx',
+  '.mdc',
+  '.qmd',
+  '.rmd',
+];
+
+/** Whether a path ends with a recognised Markdown-family extension. */
+export function hasMarkdownExtension(path: string): boolean {
+  const lower = path.toLowerCase();
+  return MARKDOWN_EXTENSIONS.some((ext) => lower.endsWith(ext));
+}
+
+/**
+ * Whether a document is a Markdown file we review. Recognises any
+ * Markdown-family file by language id OR extension (so skill files like
+ * `SKILL.md` and Cursor `.mdc` rules count, even when the editor labels them
+ * with a non-`markdown` language id). Includes unsaved (`untitled`) documents;
+ * excludes the comment input box (scheme `comment`) and our own sidecar files.
  */
 export function isReviewableMarkdownDocument(
   document: vscode.TextDocument
 ): boolean {
+  if (
+    document.uri.scheme !== 'file' &&
+    document.uri.scheme !== 'untitled'
+  ) {
+    return false;
+  }
+  if (isSidecar(document.uri)) {
+    return false;
+  }
   return (
-    document.languageId === 'markdown' &&
-    (document.uri.scheme === 'file' || document.uri.scheme === 'untitled') &&
-    !isSidecar(document.uri)
+    document.languageId === 'markdown' ||
+    hasMarkdownExtension(document.uri.path)
   );
 }
 

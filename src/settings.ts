@@ -8,7 +8,7 @@ export interface ReviewerSettings extends FormatOptions {
   quickReplies: string[];
 }
 
-const SECTION = 'mdAiReviewer';
+const SECTION = 'markThread';
 
 export function readSettings(): ReviewerSettings {
   const cfg = vscode.workspace.getConfiguration(SECTION);

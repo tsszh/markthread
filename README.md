@@ -1,4 +1,6 @@
-# Markdown AI Reviewer
+# MarkThread
+
+> Review Markdown with humans, then send feedback back to agents.
 
 Render Markdown beautifully **and** review it line-by-line — with charts, inline
 comments, and quick-reply pills. It ships in two flavors that share the same
@@ -6,8 +8,8 @@ rendering/commenting engine:
 
 1. **A standalone web app** — paste or upload Markdown in the browser, get a
    styled preview with charts, and add review comments. No install, runs fully
-   client-side. **[▶ Try the live demo](https://tsszh.github.io/md-ai-reviewer/)**
-2. **A VS Code / Cursor extension** — a custom "AI Review Preview" beside your
+   client-side. **[▶ Try the live demo](https://tsszh.github.io/markthread/)**
+2. **A VS Code / Cursor extension** — a custom "Review Preview" beside your
    editor, plus native gutter comments synced to a shareable sidecar file.
 
 > The primary workflow is producing a clean, line-referenced review you can copy
@@ -15,13 +17,17 @@ rendering/commenting engine:
 
 ## Screenshots
 
-Standalone web app — charts + an inline review comment with quick-reply pills:
+The standalone web app — rendered Markdown beside a live comments inbox (verdict pills, per-line context, filters):
 
-![Web app overview: comment thread, ECharts line chart, Chart.js bar chart](docs/screenshots/web-overview.png)
+![MarkThread web app: rendered Markdown with a comments inbox](docs/screenshots/web-overview.png)
 
-A single comment thread (line badge, quoted source, quick replies, reply box):
+Charts render client-side (ECharts, Chart.js / Obsidian Charts, Mermaid) right alongside the review:
 
-![Inline comment thread with quick-reply pills](docs/screenshots/web-comment.png)
+![MarkThread rendering an ECharts area chart and an Obsidian bar chart next to the comments rail](docs/screenshots/web-charts.png)
+
+A focused comment thread — line badge, quoted source, comment, and an inline reply box:
+
+![Focused MarkThread comment thread with reply composer](docs/screenshots/web-comment.png)
 
 ## Features
 
@@ -47,7 +53,7 @@ A single comment thread (line badge, quoted source, quick replies, reply box):
 
 ### Option A — Standalone web app (no install)
 
-Open the **[live demo](https://tsszh.github.io/md-ai-reviewer/)**, or run it
+Open the **[live demo](https://tsszh.github.io/markthread/)**, or run it
 locally (see [Development](#development)). Then:
 
 1. **Paste** Markdown into the top text box (or **Upload .md**) and click
@@ -65,30 +71,30 @@ locally (see [Development](#development)). Then:
 Install the `.vsix` (**Extensions: Install from VSIX**, see
 [Packaging](#packaging)), then open any Markdown file:
 
-- **Custom review preview**: click the **Open AI Review Preview** button in the
+- **Custom review preview**: click the **Open Review Preview** button in the
   editor title bar (or run it from the Command Palette). You get the same
   charts + inline commenting experience as the web app, beside your editor.
 - **Native gutter comments**: hover the editor gutter to add a comment on any
   line; **Enter** submits, **Shift+Enter** inserts a newline. Line-level
   comments authored in the preview stay in sync with the gutter.
-- **AI Review panel** (activity bar): comments grouped file → thread → comment,
+- **Review panel** (activity bar): comments grouped file → thread → comment,
   with Copy Review / Save-to-file actions, a Clear-all link, Expand/Collapse
   controls, and an editable quick-replies + copy-format settings section.
 - **Copy to Clipboard** is the main workflow: structured, line-referenced review
   text ready to paste into an AI.
 - **Team-shareable storage**: *Save to file* writes a sibling
-  `<file>.ai-review.json`; it auto-loads when you reopen the file and can be
+  `<file>.markthread.json`; it auto-loads when you reopen the file and can be
   committed to share with your team.
 
 ## Commands
 
 | Command | Description |
 | --- | --- |
-| `Markdown AI Reviewer: Open AI Review Preview` | Opens the custom charts + commenting preview beside the editor |
-| `Markdown AI Reviewer: Copy AI Review to Clipboard` | Copies a structured block with file, line number, quoted source line, and comment text |
-| `Markdown AI Reviewer: Save AI Review Comments to File` | Writes a sibling `<file>.ai-review.json` sidecar |
-| `Markdown AI Reviewer: Load AI Review Comments from File` | Reloads comments from the sidecar on demand |
-| `Markdown AI Reviewer: Clear All AI Review Comments` | Clears all threads and deletes the current file's sidecar |
+| `MarkThread: Open Review Preview` | Opens the custom charts + commenting preview beside the editor |
+| `MarkThread: Copy Review to Clipboard` | Copies a structured block with file, line number, quoted source line, and comment text |
+| `MarkThread: Save Review Comments to File` | Writes a sibling `<file>.markthread.json` sidecar |
+| `MarkThread: Load Review Comments from File` | Reloads comments from the sidecar on demand |
+| `MarkThread: Clear All Review Comments` | Clears all threads and deletes the current file's sidecar |
 
 ## Development
 
@@ -128,7 +134,7 @@ The standalone web app is deployed to GitHub Pages by
 [`.github/workflows/pages.yml`](.github/workflows/pages.yml) on every push to
 `main`:
 
-> **<https://tsszh.github.io/md-ai-reviewer/>**
+> **<https://tsszh.github.io/markthread/>**
 
 One-time setup (repo owner): **Settings → Pages → Build and deployment →
 Source = "GitHub Actions"**. The workflow builds `dist/standalone` and publishes
@@ -153,7 +159,7 @@ knowing:
 npm run package
 ```
 
-Produces `md-ai-reviewer-<version>.vsix`, installable via **Extensions: Install
+Produces `markthread-<version>.vsix`, installable via **Extensions: Install
 from VSIX**. Pushing a version bump to `main` also auto-creates a GitHub Release
 with the `.vsix` attached (see [`.github/workflows/release.yml`](.github/workflows/release.yml)).
 

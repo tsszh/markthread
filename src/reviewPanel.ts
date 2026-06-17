@@ -62,7 +62,10 @@ export function buildPanelModel(
       (item) => item.uri.toString() === key
     );
     const line = thread.range.start.line;
-    const rawLine = doc && line < doc.lineCount ? doc.lineAt(line).text : '';
+    const rawLine =
+      doc && line < doc.lineCount
+        ? doc.lineAt(line).text
+        : controller.getLineText(thread);
     const lineText = rawLine
       .replace(/<!--\s*ai-review[\s\S]*?-->/g, '')
       .trim();
@@ -94,7 +97,7 @@ function getNonce(): string {
 }
 
 export class ReviewPanelProvider implements vscode.WebviewViewProvider {
-  public static readonly viewId = 'md-ai-reviewer.commentsView';
+  public static readonly viewId = 'markthread.commentsView';
 
   private view?: vscode.WebviewView;
   private activeUri: string | undefined;
@@ -150,17 +153,17 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
     webviewView.webview.onDidReceiveMessage(async (message) => {
       switch (message?.type) {
         case 'copy':
-          vscode.commands.executeCommand('md-ai-reviewer.copyToClipboard');
+          vscode.commands.executeCommand('markthread.copyToClipboard');
           break;
         case 'save':
-          vscode.commands.executeCommand('md-ai-reviewer.saveToFile');
+          vscode.commands.executeCommand('markthread.saveToFile');
           break;
         case 'clear':
-          vscode.commands.executeCommand('md-ai-reviewer.clearAll');
+          vscode.commands.executeCommand('markthread.clearAll');
           break;
         case 'reveal':
           vscode.commands.executeCommand(
-            'md-ai-reviewer.openCommentInPreview',
+            'markthread.openCommentInPreview',
             vscode.Uri.parse(message.uri),
             message.line
           );
@@ -540,7 +543,7 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
         <button id="editorCollapseAll" title="Collapse all comment threads in the Markdown editor">Collapse</button>
       </span>
       <span class="spacer"></span>
-      <button id="settingsBtn" title="AI Review settings">
+      <button id="settingsBtn" title="MarkThread settings">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M9.1 4.4 8.6 2H7.4l-.5 2.4-.7.3-2-1.3-.9.8 1.3 2-.2.7-2.4.5v1.2l2.4.5.3.8-1.3 2 .8.8 2-1.3.8.3.4 2.3h1.2l.5-2.4.8-.3 2 1.3.8-.8-1.3-2 .3-.8 2.3-.4V7.4l-2.4-.5-.3-.8 1.3-2-.8-.8-2 1.3-.7-.2zM8 10.3A2.3 2.3 0 1 1 8 5.7a2.3 2.3 0 0 1 0 4.6z"/></svg>
       </button>
     </div>
@@ -549,7 +552,7 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
         <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M10 1H4a2 2 0 0 0-2 2v8h1.5V3a.5.5 0 0 1 .5-.5h6V1Zm2 2H6.5A1.5 1.5 0 0 0 5 4.5v9A1.5 1.5 0 0 0 6.5 15H12a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 12 3Zm0 10.5H6.5v-9H12v9Z"/></svg>
         Copy Review
       </button>
-      <button class="big secondary" id="save" title="Save these comments to a sibling .ai-review.json sidecar file">
+      <button class="big secondary" id="save" title="Save these comments to a sibling .markthread.json sidecar file">
         <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M3 2h8.5L14 4.5V13a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1Zm1.5 1.5v3h5v-3h-5ZM4 9v3.5h8V9H4Z"/></svg>
         Save to file
       </button>
@@ -581,7 +584,7 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
   </div>
   <div id="content"></div>
   <div id="empty" class="empty">
-    No AI review comments yet.<br /><br />
+    No review comments yet.<br /><br />
     Open a Markdown file, hover the line-number gutter, and click + to add a
     review comment. Saved comments load here automatically.
   </div>
@@ -663,7 +666,7 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
             '<div class="body">' + esc(c.body) + '</div>';
           // Clicking a comment opens the rendered preview at that thread, where
           // it can be read, replied to and edited (the panel itself is read-only).
-          cEl.title = 'Open in AI Review preview';
+          cEl.title = 'Open in review preview';
           cEl.addEventListener('click', () => {
             vscode.postMessage({ type: 'reveal', uri: thread.uri, line: thread.line });
           });

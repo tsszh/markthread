@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { ReviewComment, ReviewThread } from './core';
-import { StoredThread } from './storage';
+import { isReviewableMarkdownDocument, StoredThread } from './storage';
 
 let commentIdCounter = 1;
 
@@ -45,6 +45,14 @@ export class MarkdownCommentController {
    */
   private readonly selectionThreads = new Map<string, StoredThread[]>();
 
+  /**
+   * Source line text captured when each thread is created/loaded. Used as a
+   * fallback for Copy/Save when the underlying document is no longer open in
+   * the editor (e.g. after replacing it with the in-place review preview), so
+   * the quoted "line content" is never lost.
+   */
+  private readonly threadLineText = new Map<vscode.CommentThread, string>();
+
   private readonly author: vscode.CommentAuthorInformation = {
     name: 'Reviewer',
   };
@@ -61,13 +69,13 @@ export class MarkdownCommentController {
 
   constructor(context: vscode.ExtensionContext) {
     this.controller = vscode.comments.createCommentController(
-      'md-ai-reviewer',
-      'Markdown AI Reviewer'
+      'markthread',
+      'MarkThread'
     );
 
     this.controller.commentingRangeProvider = {
       provideCommentingRanges: (document: vscode.TextDocument) => {
-        if (document.languageId !== 'markdown') {
+        if (!isReviewableMarkdownDocument(document)) {
           return [];
         }
 
@@ -101,12 +109,13 @@ export class MarkdownCommentController {
 
     thread.comments = [...thread.comments, comment];
     const line = thread.range ? thread.range.start.line + 1 : 0;
-    thread.label = `AI review · line ${line}`;
-    thread.contextValue = 'mdAiReviewerThread';
+    thread.label = `Review · line ${line}`;
+    thread.contextValue = 'markThreadThread';
     thread.collapsibleState = vscode.CommentThreadCollapsibleState.Expanded;
 
     this.threads.add(thread);
     if (thread.range) {
+      this.captureLineText(thread);
       this._lastActive = {
         uri: thread.uri.toString(),
         line: thread.range.start.line,
@@ -114,6 +123,25 @@ export class MarkdownCommentController {
     }
     this._onDidChange.fire();
     return thread;
+  }
+
+  /** Records the current source line of a thread (best-effort) for later Copy/Save. */
+  private captureLineText(thread: vscode.CommentThread): void {
+    if (!thread.range) {
+      return;
+    }
+    const doc = vscode.workspace.textDocuments.find(
+      (item) => item.uri.toString() === thread.uri.toString()
+    );
+    const line = thread.range.start.line;
+    if (doc && line >= 0 && line < doc.lineCount) {
+      this.threadLineText.set(thread, doc.lineAt(line).text);
+    }
+  }
+
+  /** Best-effort cached source line text for a thread (empty when unknown). */
+  getLineText(thread: vscode.CommentThread): string {
+    return this.threadLineText.get(thread) ?? '';
   }
 
   /**
@@ -245,6 +273,7 @@ export class MarkdownCommentController {
 
     if (thread.comments.length === 0) {
       this.threads.delete(thread);
+      this.threadLineText.delete(thread);
       thread.dispose();
     }
     this._onDidChange.fire();
@@ -252,6 +281,7 @@ export class MarkdownCommentController {
 
   deleteThread(thread: vscode.CommentThread): void {
     this.threads.delete(thread);
+    this.threadLineText.delete(thread);
     thread.dispose();
     this._onDidChange.fire();
   }
@@ -261,6 +291,7 @@ export class MarkdownCommentController {
       thread.dispose();
     }
     this.threads.clear();
+    this.threadLineText.clear();
     this.selectionThreads.clear();
     this._onDidChange.fire();
   }
@@ -289,6 +320,7 @@ export class MarkdownCommentController {
     for (const thread of [...this.threads]) {
       if (thread.uri.toString() === uri) {
         this.threads.delete(thread);
+        this.threadLineText.delete(thread);
         thread.dispose();
       }
     }
@@ -303,10 +335,11 @@ export class MarkdownCommentController {
     document: vscode.TextDocument,
     stored: {
       line: number;
+      lineText?: string;
       comments: { author: string; body: string }[];
     }[]
   ): number {
-    if (document.languageId !== 'markdown') {
+    if (!isReviewableMarkdownDocument(document)) {
       return 0;
     }
 
@@ -352,10 +385,19 @@ export class MarkdownCommentController {
         added++;
       }
 
-      thread.label = `AI review · line ${entry.line + 1}`;
-      thread.contextValue = 'mdAiReviewerThread';
+      thread.label = `Review · line ${entry.line + 1}`;
+      thread.contextValue = 'markThreadThread';
       thread.collapsibleState = vscode.CommentThreadCollapsibleState.Collapsed;
       this.threads.add(thread);
+
+      // Remember the source line so Copy/Save keep the quoted "line content"
+      // even if the document is later closed. Prefer the live document text,
+      // falling back to whatever was persisted in the sidecar.
+      const liveLine =
+        entry.line < document.lineCount
+          ? document.lineAt(entry.line).text
+          : undefined;
+      this.threadLineText.set(thread, liveLine ?? entry.lineText ?? '');
     }
 
     if (added > 0) {
@@ -405,9 +447,13 @@ export class MarkdownCommentController {
         (item) => item.uri.toString() === thread.uri.toString()
       );
       const line = thread.range.start.line;
-      // The document may have shrunk since the thread was created.
+      // Prefer the live document text; fall back to the line captured when the
+      // thread was created/loaded so Copy works even when the source file is
+      // not currently open (e.g. replaced by the in-place review preview).
       const lineText =
-        doc && line < doc.lineCount ? doc.lineAt(line).text : '';
+        doc && line < doc.lineCount
+          ? doc.lineAt(line).text
+          : this.getLineText(thread);
 
       for (const comment of thread.comments) {
         const body =
