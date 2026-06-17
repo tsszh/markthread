@@ -108,7 +108,7 @@ suite('Storage Suite', () => {
         {
           line: 3,
           lineText: 'beta',
-          comments: [{ author: 'songz', body: 'tighten wording' }],
+          comments: [{ author: 'tsszh', body: 'tighten wording' }],
         },
       ],
     };
@@ -130,7 +130,7 @@ suite('Storage Suite', () => {
         {
           line: 1,
           lineText: 'second line',
-          comments: [{ author: 'songz', body: 'please revise' }],
+          comments: [{ author: 'tsszh', body: 'please revise' }],
         },
       ],
     };
@@ -566,12 +566,12 @@ suite('Stored Load Suite', () => {
     const controller = new MarkdownCommentController(fakeContext);
 
     const stored = [
-      { line: 1, comments: [{ author: 'songz', body: 'fix this line' }] },
+      { line: 1, comments: [{ author: 'tsszh', body: 'fix this line' }] },
     ];
     assert.strictEqual(controller.loadStoredComments(document, stored), 1);
 
     const model = buildPanelModel(controller);
-    assert.strictEqual(model[0].threads[0].comments[0].author, 'songz');
+    assert.strictEqual(model[0].threads[0].comments[0].author, 'tsszh');
     assert.strictEqual(model[0].threads[0].comments[0].body, 'fix this line');
 
     assert.strictEqual(controller.loadStoredComments(document, stored), 0);
@@ -587,7 +587,7 @@ suite('Stored Load Suite', () => {
     const controller = new MarkdownCommentController(fakeContext);
 
     controller.loadStoredComments(document, [
-      { line: 0, comments: [{ author: 'songz', body: 'stored note' }] },
+      { line: 0, comments: [{ author: 'tsszh', body: 'stored note' }] },
     ]);
 
     const loaded = controller.getThreads()[0];
