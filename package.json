@@ -2,7 +2,7 @@
   "name": "markthread",
   "displayName": "MarkThread",
   "description": "Review Markdown with humans, then send feedback back to agents.",
-  "version": "0.1.25",
+  "version": "0.1.27",
   "publisher": "local",
   "license": "MIT",
   "repository": {

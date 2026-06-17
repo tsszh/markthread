@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.27
+
+- The **Review Comments** side panel now lists selection- and table-cell-anchored comments too (previously it only showed whole-line gutter threads, so cell comments were invisible there even though they were stored and appeared when copying). Cell comments show their `Table N (L<line>), row R, column C (Header)` address as the badge, keeping the panel in sync with what is actually stored in memory.
+
+## 0.1.26
+
+- Table-cell comments now stay anchored to their individual cell instead of collapsing onto the whole table. In the VS Code preview, cell-anchored threads are kept as detached threads (like selection comments) rather than being mirrored onto the single table source line, so multiple cells in one table no longer merge into one thread.
+- Copying/sharing a review now quotes a precise location for table-cell comments — `Table N (L<line>), row R, column C (Header)` — with the cell's content as the quoted line, instead of attributing every cell to the table's source line. The standalone web app and the VS Code extension produce the same label.
+
 ## 0.1.25
 
 - Fixed Mermaid diagrams rendering "Syntax error in text" once a comment was attached to the diagram: the per-line comment marker was being appended inside the `<pre>` Mermaid reads, corrupting the diagram source. Mermaid blocks are now wrapped so the marker anchors to a wrapper element instead.

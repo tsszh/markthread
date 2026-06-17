@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { ReviewComment, ReviewThread } from './core';
+import { describeTableCell, ReviewComment, ReviewThread } from './core';
 import { isReviewableMarkdownDocument, StoredThread } from './storage';
 
 let commentIdCounter = 1;
@@ -301,6 +301,15 @@ export class MarkdownCommentController {
     return this.selectionThreads.get(uri) ?? [];
   }
 
+  /**
+   * Every in-memory selection-/cell-anchored thread, grouped by document URI.
+   * These have no native gutter representation, so the review panel reads them
+   * from here to keep its list in sync with what is actually stored.
+   */
+  getDetachedThreadsByUri(): Map<string, StoredThread[]> {
+    return this.selectionThreads;
+  }
+
   /** Replaces the in-memory selection threads for a document (no disk write). */
   setSelectionThreads(uri: string, threads: StoredThread[]): void {
     if (threads.length > 0) {
@@ -467,19 +476,29 @@ export class MarkdownCommentController {
       }
     }
 
-    // Include preview-authored selection threads kept in memory.
+    // Include preview-authored selection- and cell-anchored threads kept in
+    // memory. Cell threads get a table/row/column address instead of `Line N`.
     for (const [uri, list] of this.selectionThreads) {
       if (document && uri !== document.uri.toString()) {
         continue;
       }
       const file = vscode.workspace.asRelativePath(vscode.Uri.parse(uri));
+      const doc = vscode.workspace.textDocuments.find(
+        (item) => item.uri.toString() === uri
+      );
+      const docLines = doc?.getText().split('\n');
       for (const thread of list) {
         const comments = grouped.get(file) ?? [];
+        const locationLabel =
+          thread.cell && docLines
+            ? describeTableCell(docLines, thread.line, thread.cell)
+            : undefined;
         for (const c of thread.comments) {
           comments.push({
             line: thread.line,
             lineText: thread.lineText,
             comment: c.body,
+            ...(locationLabel ? { locationLabel } : {}),
           });
         }
         grouped.set(file, comments);

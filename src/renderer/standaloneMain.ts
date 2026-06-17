@@ -12,6 +12,7 @@ import {
 } from './defaults';
 import type { QuickReply, StatusTone } from './defaults';
 import {
+  describeTableCell,
   formatStructured,
   STRUCTURED_HEADER,
   type ReviewThread as CopyThread,
@@ -473,6 +474,16 @@ function commentToText(c: PreviewThread['comments'][number]): string {
   return [tag, body].filter(Boolean).join(' ');
 }
 
+// Builds a location reference for a table-cell thread: which table (ordinal +
+// source line), which row, and which column (index + header label). Falls back
+// to undefined for non-cell threads so the formatter uses the plain `Line N`.
+function cellLocationLabel(t: PreviewThread): string | undefined {
+  if (!t.cell) {
+    return undefined;
+  }
+  return describeTableCell(markdown.split('\n'), t.line, t.cell);
+}
+
 // Builds a human-readable review summary (NOT JSON) using the configurable
 // share template + toggles. Each thread quotes its line number/text + comments.
 function shareText(): string {
@@ -483,6 +494,7 @@ function shareText(): string {
       {
         line: t.line,
         lineText: t.selection?.text || t.lineText,
+        locationLabel: cellLocationLabel(t),
         comment:
           t.comments.map(commentToText).filter(Boolean).join('\n') +
           (t.resolved ? '\n(resolved)' : ''),

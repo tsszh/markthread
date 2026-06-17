@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { MarkdownCommentController, ReviewCommentItem } from './comments';
+import { describeTableCell } from './core';
 import {
   readSettings,
   resetSettings,
@@ -18,6 +19,8 @@ export interface PanelThread {
   line: number;
   lineText: string;
   comments: PanelComment[];
+  /** Table/row/column address for cell-anchored threads (shown instead of `Line N`). */
+  locationLabel?: string;
 }
 
 export interface PanelFile {
@@ -83,6 +86,63 @@ export function buildPanelModel(
     file.threads.sort((a, b) => a.line - b.line);
   }
 
+  return [...byUri.values()].sort((a, b) => a.label.localeCompare(b.label));
+}
+
+/**
+ * Panel model including the in-memory selection-/cell-anchored threads that
+ * have no native gutter representation. Used only by the review panel webview
+ * so its list matches what is actually stored (gutter threads + detached
+ * threads). Other consumers of `buildPanelModel` deliberately exclude these so
+ * they aren't double-counted alongside `getSelectionThreads`.
+ */
+export function buildReviewPanelModel(
+  controller: MarkdownCommentController
+): PanelFile[] {
+  const byUri = new Map<string, PanelFile>();
+  for (const file of buildPanelModel(controller)) {
+    byUri.set(file.uri, file);
+  }
+
+  for (const [uri, threads] of controller.getDetachedThreadsByUri()) {
+    if (!threads.length) {
+      continue;
+    }
+    let file = byUri.get(uri);
+    if (!file) {
+      file = {
+        uri,
+        label: vscode.workspace.asRelativePath(vscode.Uri.parse(uri)),
+        threads: [],
+      };
+      byUri.set(uri, file);
+    }
+    const doc = vscode.workspace.textDocuments.find(
+      (item) => item.uri.toString() === uri
+    );
+    const docLines = doc?.getText().split('\n');
+    for (const thread of threads) {
+      const locationLabel =
+        thread.cell && docLines
+          ? describeTableCell(docLines, thread.line, thread.cell)
+          : undefined;
+      file.threads.push({
+        uri,
+        line: thread.line,
+        lineText: (thread.selection?.text || thread.lineText || '').trim(),
+        locationLabel,
+        comments: thread.comments.map((comment, index) => ({
+          author: comment.author,
+          body: comment.body,
+          isReply: index > 0,
+        })),
+      });
+    }
+  }
+
+  for (const file of byUri.values()) {
+    file.threads.sort((a, b) => a.line - b.line);
+  }
   return [...byUri.values()].sort((a, b) => a.label.localeCompare(b.label));
 }
 
@@ -221,7 +281,7 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
     // Only surface comments for the active Markdown file, so the Copy/Save
     // actions (which target that file) always match what's shown.
     const files = this.activeUri
-      ? buildPanelModel(this.controller).filter(
+      ? buildReviewPanelModel(this.controller).filter(
           (file) => file.uri === this.activeUri
         )
       : [];
@@ -397,7 +457,12 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
     border-radius: 10px;
     background: var(--vscode-badge-background, #4d4d4d);
     color: var(--vscode-badge-foreground, #fff);
-    flex: 0 0 auto;
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 60%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .line-text {
     color: var(--vscode-descriptionForeground);
@@ -642,9 +707,17 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
         threadEl.open = openState.has(key) ? openState.get(key) : isActive;
         threadEl.addEventListener('toggle', () => openState.set(key, threadEl.open));
         const tSummary = document.createElement('summary');
+        // Cell-anchored threads show their table/row/column address (and the
+        // cell content as the context text); line threads show the line number.
+        const badge = thread.locationLabel
+          ? esc(thread.locationLabel)
+          : 'Line ' + (thread.line + 1);
+        const ctx = esc(thread.lineText || '');
         tSummary.innerHTML = twisty +
-          '<span class="line-badge">Line ' + (thread.line + 1) + '</span>' +
-          '<span class="line-text">' + esc(thread.lineText || '') + '</span>' +
+          '<span class="line-badge"' +
+          (thread.locationLabel ? ' title="' + esc(thread.locationLabel) + '"' : '') +
+          '>' + badge + '</span>' +
+          '<span class="line-text" title="' + ctx + '">' + ctx + '</span>' +
           '<button class="jump" title="Jump to line">' + jumpIcon + '</button>';
         threadEl.appendChild(tSummary);
 

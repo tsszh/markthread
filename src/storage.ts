@@ -14,11 +14,19 @@ export interface StoredSelection {
   text: string;
 }
 
+/** Anchors a thread to a specific table cell (zero-based row/column). */
+export interface StoredCell {
+  row: number;
+  col: number;
+}
+
 export interface StoredThread {
   line: number;
   lineText: string;
   /** Present when the thread targets a selection rather than a whole line. */
   selection?: StoredSelection;
+  /** Present when the thread targets a specific table cell. */
+  cell?: StoredCell;
   comments: StoredComment[];
 }
 
@@ -97,6 +105,13 @@ function normalizeSelection(value: Partial<StoredSelection>): StoredSelection {
   };
 }
 
+function normalizeCell(value: Partial<StoredCell>): StoredCell {
+  return {
+    row: Number(value.row) || 0,
+    col: Number(value.col) || 0,
+  };
+}
+
 export function serializeReview(review: StoredReview): string {
   return JSON.stringify(review, null, 2) + '\n';
 }
@@ -120,6 +135,7 @@ export function parseReview(json: string): StoredReview | undefined {
           ...(thread.selection
             ? { selection: normalizeSelection(thread.selection) }
             : {}),
+          ...(thread.cell ? { cell: normalizeCell(thread.cell) } : {}),
           comments: thread.comments
             .filter((c) => !!c && typeof c.body === 'string')
             .map((c) => ({

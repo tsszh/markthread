@@ -17,11 +17,17 @@ interface PreviewComment {
   body: string;
 }
 
+interface PreviewCell {
+  row: number;
+  col: number;
+}
+
 interface PreviewThread {
   id: string;
   line: number;
   lineText: string;
   selection?: PreviewSelection;
+  cell?: PreviewCell;
   comments: PreviewComment[];
 }
 
@@ -231,17 +237,20 @@ export class ReviewPreviewPanel {
       line: t.line,
       lineText: t.lineText,
       ...(t.selection ? { selection: t.selection } : {}),
+      ...(t.cell ? { cell: t.cell } : {}),
       comments: t.comments.map((c) => ({ author: c.author, body: c.body })),
     }));
 
     const uri = this.document.uri.toString();
-    // Selection threads have no native gutter representation, so keep them in
-    // the controller's in-memory store; line threads mirror onto the gutter.
+    // Selection- and cell-anchored threads have no native gutter representation,
+    // so keep them in the controller's in-memory store; only whole-line threads
+    // mirror onto the gutter (otherwise multiple cells in one table collapse
+    // onto the single table line).
     this.controller.setSelectionThreads(
       uri,
-      stored.filter((t) => !!t.selection)
+      stored.filter((t) => !!t.selection || !!t.cell)
     );
-    const lineLevel = stored.filter((t) => !t.selection);
+    const lineLevel = stored.filter((t) => !t.selection && !t.cell);
     this.controller.removeThreadsForUri(uri);
     this.controller.loadStoredComments(this.document, lineLevel);
   }
@@ -268,19 +277,27 @@ export class ReviewPreviewPanel {
 
     let i = 0;
     for (const thread of this.controller.getSelectionThreads(uri)) {
-      if (!thread.selection) {
-        continue;
+      const comments = thread.comments.map((c) => ({
+        author: c.author,
+        body: c.body,
+      }));
+      if (thread.selection) {
+        result.push({
+          id: `sel-${i++}`,
+          line: thread.line,
+          lineText: thread.lineText,
+          selection: thread.selection,
+          comments,
+        });
+      } else if (thread.cell) {
+        result.push({
+          id: `cell-${i++}`,
+          line: thread.line,
+          lineText: thread.lineText,
+          cell: thread.cell,
+          comments,
+        });
       }
-      result.push({
-        id: `sel-${i++}`,
-        line: thread.line,
-        lineText: thread.lineText,
-        selection: thread.selection,
-        comments: thread.comments.map((c) => ({
-          author: c.author,
-          body: c.body,
-        })),
-      });
     }
 
     return result;

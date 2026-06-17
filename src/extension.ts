@@ -35,8 +35,8 @@ function reviewForDocument(
       body: comment.body,
     })),
   }));
-  // Selection-anchored threads live only in the controller's in-memory store
-  // (they have no native gutter representation) — include them when saving.
+  // Selection- and cell-anchored threads live only in the controller's
+  // in-memory store (no native gutter representation) — include when saving.
   const selectionThreads = controller.getSelectionThreads(
     document.uri.toString()
   );
@@ -335,11 +335,11 @@ export function activate(context: vscode.ExtensionContext): void {
 
       const added = controller.loadStoredComments(
         editor.document,
-        stored.comments.filter((t) => !t.selection)
+        stored.comments.filter((t) => !t.selection && !t.cell)
       );
       controller.setSelectionThreads(
         editor.document.uri.toString(),
-        stored.comments.filter((t) => !!t.selection)
+        stored.comments.filter((t) => !!t.selection || !!t.cell)
       );
       vscode.window.showInformationMessage(
         added > 0
