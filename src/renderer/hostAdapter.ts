@@ -57,6 +57,16 @@ export interface PreviewInitData {
    * through `Webview.asWebviewUri`; empty/undefined in the standalone app.
    */
   resourceBase?: string;
+  /**
+   * Resolved appearance preferences (VS Code host only). The standalone app
+   * manages its own appearance via the toolbar + localStorage and leaves this
+   * undefined.
+   */
+  ui?: {
+    lang?: 'en' | 'zh';
+    theme?: 'light' | 'dark';
+    accent?: string;
+  };
 }
 
 export interface HostAdapter {

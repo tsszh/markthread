@@ -14,6 +14,7 @@ import {
   resolveStatus,
 } from './defaults';
 import type { QuickReply, StatusTone } from './defaults';
+import { t, onLangChange, locale } from './i18n';
 import type {
   HostAdapter,
   PreviewInitData,
@@ -123,24 +124,24 @@ function timeAgo(ts: number | undefined): { short: string; full: string } {
   if (!ts) {
     return { short: '', full: '' };
   }
-  const full = new Date(ts).toLocaleString();
+  const full = new Date(ts).toLocaleString(locale());
   const diff = Date.now() - ts;
   const min = Math.floor(diff / 60000);
   if (min < 1) {
-    return { short: 'just now', full };
+    return { short: t('justNow'), full };
   }
   if (min < 60) {
-    return { short: min + 'm', full };
+    return { short: t('timeMin', { n: min }), full };
   }
   const hr = Math.floor(min / 60);
   if (hr < 24) {
-    return { short: hr + 'h', full };
+    return { short: t('timeHour', { n: hr }), full };
   }
   const day = Math.floor(hr / 24);
   if (day < 7) {
-    return { short: day + 'd', full };
+    return { short: t('timeDay', { n: day }), full };
   }
-  return { short: new Date(ts).toLocaleDateString(), full };
+  return { short: new Date(ts).toLocaleDateString(locale()), full };
 }
 
 interface Draft {
@@ -316,8 +317,8 @@ export function mountPreview(
   function showError(el: HTMLElement, kind: string, err: unknown): void {
     const message = err instanceof Error ? err.message : String(err);
     el.innerHTML = `<div class="mdr-chart-error">⚠️ ${esc(
-      kind
-    )} render failed: ${esc(message)}</div>`;
+      t('renderFailed', { kind, message })
+    )}</div>`;
   }
 
   // --- Shared comment pieces ------------------------------------------------
@@ -360,12 +361,12 @@ export function mountPreview(
     name.className = 'mdr-c-name';
     name.textContent = c.author;
     meta.appendChild(name);
-    const t = timeAgo(c.createdAt);
-    if (t.short) {
+    const ago = timeAgo(c.createdAt);
+    if (ago.short) {
       const time = document.createElement('time');
       time.className = 'mdr-c-time';
-      time.textContent = t.short;
-      time.title = t.full;
+      time.textContent = ago.short;
+      time.title = ago.full;
       meta.appendChild(time);
     }
     if (c.status) {
@@ -375,10 +376,10 @@ export function mountPreview(
       const acts = document.createElement('span');
       acts.className = 'mdr-c-actions';
       acts.appendChild(
-        iconButton('edit', 'Edit comment', () => startEdit(thread.id, index))
+        iconButton('edit', t('editComment'), () => startEdit(thread.id, index))
       );
       acts.appendChild(
-        iconButton('trash', 'Delete comment', () =>
+        iconButton('trash', t('deleteComment'), () =>
           deleteComment(thread.id, index)
         )
       );
@@ -389,14 +390,14 @@ export function mountPreview(
     if (isEditing) {
       main.appendChild(
         composer(
-          'Edit comment…',
+          t('editCommentPlaceholder'),
           (text) => editComment(thread.id, index, text),
           () => {
             editing = null;
             renderThreads();
           },
           undefined,
-          { initialValue: c.body ?? '', submitLabel: 'Save', autofocus: true }
+          { initialValue: c.body ?? '', submitLabel: t('save'), autofocus: true }
         )
       );
     } else if (c.body && c.body !== c.status) {
@@ -441,7 +442,7 @@ export function mountPreview(
       chip.type = 'button';
       chip.className = 'mdr-status mdr-status-btn';
       chip.dataset.tone = s.tone;
-      chip.setAttribute('aria-label', 'Add verdict: ' + s.label);
+      chip.setAttribute('aria-label', t('addVerdict', { label: s.label }));
       chip.innerHTML =
         `<span class="mdr-status-glyph" aria-hidden="true">${esc(
           s.glyph ?? glyphForTone(s.tone)
@@ -481,11 +482,11 @@ export function mountPreview(
     actions.className = 'mdr-composer-actions';
     const hint = document.createElement('span');
     hint.className = 'mdr-composer-hint';
-    hint.textContent = 'Enter to send';
+    hint.textContent = t('enterToSend');
     const submit = document.createElement('button');
     submit.type = 'button';
     submit.className = 'mdr-btn primary';
-    submit.textContent = opts?.submitLabel ?? 'Comment';
+    submit.textContent = opts?.submitLabel ?? t('commentLabel');
     const doSubmit = (): void => {
       const text = ta.value.trim();
       if (text) {
@@ -513,7 +514,7 @@ export function mountPreview(
       const cancel = document.createElement('button');
       cancel.type = 'button';
       cancel.className = 'mdr-btn';
-      cancel.textContent = 'Cancel';
+      cancel.textContent = t('cancel');
       cancel.addEventListener('click', onCancel);
       actions.appendChild(cancel);
     }
@@ -527,7 +528,7 @@ export function mountPreview(
     if (thread.selection?.text) {
       return '“' + thread.selection.text.slice(0, 90) + '”';
     }
-    return thread.lineText || 'Line ' + ((thread.line ?? 0) + 1);
+    return thread.lineText || t('lineN', { n: (thread.line ?? 0) + 1 });
   }
 
   // --- Thread popup card ----------------------------------------------------
@@ -548,14 +549,14 @@ export function mountPreview(
     ctx.innerHTML =
       `<span class="mdr-ctx-line">L${thread.line + 1}</span>` +
       `<span class="mdr-ctx-text">${esc(contextLabel(thread))}</span>`;
-    ctx.title = 'Jump to this line';
+    ctx.title = t('jumpToLine');
     ctx.addEventListener('click', () => focusLine(thread));
     top.appendChild(ctx);
 
     if (thread.resolved) {
       const badge = document.createElement('span');
       badge.className = 'mdr-resolved-badge';
-      badge.textContent = 'Resolved';
+      badge.textContent = t('resolved');
       top.appendChild(badge);
     }
 
@@ -566,16 +567,16 @@ export function mountPreview(
     top.appendChild(
       iconButton(
         thread.resolved ? 'reopen' : 'check',
-        thread.resolved ? 'Reopen thread' : 'Resolve thread',
+        thread.resolved ? t('reopenThread') : t('resolveThread'),
         () => toggleResolved(thread.id),
         thread.resolved ? '' : 'mdr-resolve'
       )
     );
     top.appendChild(
-      iconButton('trash', 'Delete thread', () => deleteThread(thread.id))
+      iconButton('trash', t('deleteThread'), () => deleteThread(thread.id))
     );
     top.appendChild(
-      iconButton('close', 'Close', () => closePopup(), 'mdr-pop-close')
+      iconButton('close', t('close'), () => closePopup(), 'mdr-pop-close')
     );
     block.appendChild(top);
 
@@ -592,7 +593,7 @@ export function mountPreview(
     body.appendChild(qr);
     body.appendChild(
       composer(
-        'Reply…',
+        t('reply'),
         (text) => addComment(thread.id, text),
         undefined,
         () => qr.classList.add('show')
@@ -613,7 +614,7 @@ export function mountPreview(
       `<span class="mdr-ctx-text">${esc(contextLabel(d))}</span>` +
       '<span class="mdr-spacer"></span>';
     top.appendChild(
-      iconButton('close', 'Cancel comment', () => {
+      iconButton('close', t('cancel'), () => {
         draft = null;
         renderThreads();
       })
@@ -626,7 +627,7 @@ export function mountPreview(
     body.appendChild(qr);
     body.appendChild(
       composer(
-        'Write a review comment…',
+        t('writeComment'),
         (text) => submitDraft(text),
         () => {
           draft = null;
@@ -802,12 +803,11 @@ export function mountPreview(
         (isCell ? 'mdr-cell-marker' : 'mdr-gutter') + (open ? '' : ' resolved');
       marker.setAttribute(
         'aria-label',
-        count +
-          ' comment' +
-          (count > 1 ? 's' : '') +
-          (isCell ? ' on this cell' : ' on this line')
+        isCell
+          ? t('commentsOnCell', { n: count })
+          : t('commentsOnLine', { n: count })
       );
-      marker.title = 'View comment' + (count > 1 ? 's' : '');
+      marker.title = t('viewComments', { n: count });
       marker.innerHTML =
         icon('comment') +
         `<span class="mdr-gutter-count">${count}</span>`;
@@ -937,8 +937,8 @@ export function mountPreview(
   const addBtn = document.createElement('button');
   addBtn.className = 'mdr-add-btn';
   addBtn.type = 'button';
-  addBtn.setAttribute('aria-label', 'Add a comment on this line');
-  addBtn.title = 'Comment on this line';
+  addBtn.setAttribute('aria-label', t('addCommentLine'));
+  addBtn.title = t('commentOnLine');
   addBtn.innerHTML = icon('plus');
   addBtn.style.display = 'none';
   document.body.appendChild(addBtn);
@@ -1012,8 +1012,8 @@ export function mountPreview(
   const cellBtn = document.createElement('button');
   cellBtn.className = 'mdr-cell-add';
   cellBtn.type = 'button';
-  cellBtn.setAttribute('aria-label', 'Add a comment on this cell');
-  cellBtn.title = 'Comment on this cell';
+  cellBtn.setAttribute('aria-label', t('addCommentCell'));
+  cellBtn.title = t('commentOnCell');
   cellBtn.innerHTML = icon('comment');
   cellBtn.style.display = 'none';
   document.body.appendChild(cellBtn);
@@ -1155,7 +1155,7 @@ export function mountPreview(
   selPop.innerHTML =
     `<button type="button" class="mdr-sel-btn">${icon(
       'comment'
-    )}<span>Comment</span></button>`;
+    )}<span class="mdr-sel-label">${esc(t('commentLabel'))}</span></button>`;
   document.body.appendChild(selPop);
   let pendingSelection: Draft | null = null;
 
@@ -1246,7 +1246,9 @@ export function mountPreview(
   window.addEventListener('scroll', hideSelectionPopover, { passive: true });
 
   // --- Compact frontmatter --------------------------------------------------
+  let lastPropertiesHtml = '';
   function renderProperties(propertiesHtml: string): void {
+    lastPropertiesHtml = propertiesHtml;
     if (!propertiesHtml.trim()) {
       propsEl.innerHTML = '';
       propsEl.hidden = true;
@@ -1255,8 +1257,10 @@ export function mountPreview(
     propsEl.hidden = false;
     propsEl.innerHTML =
       '<details class="mdr-props">' +
-      '<summary class="mdr-props-summary"><span class="mdr-props-label">Properties</span>' +
-      '<span class="mdr-props-hint">show details</span></summary>' +
+      `<summary class="mdr-props-summary"><span class="mdr-props-label">${esc(
+        t('properties')
+      )}</span>` +
+      `<span class="mdr-props-hint">${esc(t('showDetails'))}</span></summary>` +
       `<div class="mdr-props-body">${propertiesHtml}</div>` +
       '</details>';
   }
@@ -1286,19 +1290,23 @@ export function mountPreview(
   if (options.sidePanel) {
     panel = document.createElement('aside');
     panel.className = 'mdr-side-panel';
-    panel.setAttribute('aria-label', 'Review comments');
+    panel.setAttribute('aria-label', t('reviewComments'));
     panel.innerHTML =
       '<div class="mdr-side-head">' +
-      '<span class="mdr-side-title">Comments</span>' +
+      `<span class="mdr-side-title">${esc(t('comments'))}</span>` +
       '<span class="mdr-side-count">0</span>' +
       '<span class="mdr-spacer"></span>' +
       '<div class="mdr-side-tabs" role="tablist">' +
-      '<button type="button" class="mdr-tab" data-tab="inbox" role="tab">Inbox</button>' +
-      '<button type="button" class="mdr-tab" data-tab="outline" role="tab">Outline</button>' +
-      '</div>' +
-      `<button type="button" class="mdr-iconbtn mdr-side-close" aria-label="Hide comments panel" title="Hide panel">${icon(
-        'close'
+      `<button type="button" class="mdr-tab" data-tab="inbox" role="tab">${esc(
+        t('inbox')
       )}</button>` +
+      `<button type="button" class="mdr-tab" data-tab="outline" role="tab">${esc(
+        t('outline')
+      )}</button>` +
+      '</div>' +
+      `<button type="button" class="mdr-iconbtn mdr-side-close" aria-label="${esc(
+        t('hideCommentsPanel')
+      )}" title="${esc(t('hidePanel'))}">${icon('close')}</button>` +
       '</div>' +
       '<div class="mdr-side-scroll"></div>';
     document.body.appendChild(panel);
@@ -1322,7 +1330,7 @@ export function mountPreview(
     fab = document.createElement('button');
     fab.type = 'button';
     fab.className = 'mdr-fab';
-    fab.setAttribute('aria-label', 'Open comments');
+    fab.setAttribute('aria-label', t('openComments'));
     fab.innerHTML = icon('comment') + '<span class="mdr-fab-count">0</span>';
     fab.addEventListener('click', () => setPanelOpen(true));
     document.body.appendChild(fab);
@@ -1384,13 +1392,19 @@ export function mountPreview(
       mine: threads.filter((t) => t.comments.some((c) => c.author === author))
         .length,
     };
+    const filterLabels: Record<Filter, string> = {
+      all: t('filterAll'),
+      open: t('filterOpen'),
+      resolved: t('filterResolved'),
+      mine: t('filterMine'),
+    };
     (['all', 'open', 'resolved', 'mine'] as Filter[]).forEach((f) => {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'mdr-filter' + (filter === f ? ' active' : '');
       btn.setAttribute('aria-pressed', String(filter === f));
       btn.innerHTML =
-        `<span>${f[0].toUpperCase() + f.slice(1)}</span>` +
+        `<span>${esc(filterLabels[f])}</span>` +
         `<span class="mdr-filter-count">${counts[f]}</span>`;
       btn.addEventListener('click', () => {
         filter = f;
@@ -1401,20 +1415,18 @@ export function mountPreview(
     host.appendChild(bar);
 
     if (!loaded) {
-      host.appendChild(stateBlock('Loading comments…', true));
+      host.appendChild(stateBlock(t('loadingComments'), true));
       return;
     }
     if (!threads.length) {
-      host.appendChild(
-        stateBlock(
-          'No comments yet. Hover a line and click +, or select text to start a review.'
-        )
-      );
+      host.appendChild(stateBlock(t('noCommentsYet')));
       return;
     }
     const list = filtered();
     if (!list.length) {
-      host.appendChild(stateBlock(`No ${filter} comments.`));
+      host.appendChild(
+        stateBlock(t('noFilterComments', { label: filterLabels[filter] }))
+      );
       return;
     }
 
@@ -1444,18 +1456,18 @@ export function mountPreview(
     who.className = 'mdr-inbox-author';
     who.textContent = first?.author ?? author;
     head.appendChild(who);
-    const t = timeAgo(last?.createdAt ?? thread.createdAt);
-    if (t.short) {
+    const ago = timeAgo(last?.createdAt ?? thread.createdAt);
+    if (ago.short) {
       const time = document.createElement('time');
       time.className = 'mdr-inbox-time';
-      time.textContent = t.short;
-      time.title = t.full;
+      time.textContent = ago.short;
+      time.title = ago.full;
       head.appendChild(time);
     }
     const dot = document.createElement('span');
     dot.className =
       'mdr-inbox-dot ' + (thread.resolved ? 'resolved' : 'open');
-    dot.title = thread.resolved ? 'Resolved' : 'Open';
+    dot.title = thread.resolved ? t('resolved') : t('open');
     head.appendChild(dot);
     item.appendChild(head);
 
@@ -1480,7 +1492,7 @@ export function mountPreview(
     if (thread.comments.length > 1) {
       const meta = document.createElement('div');
       meta.className = 'mdr-inbox-meta';
-      meta.textContent = thread.comments.length + ' comments';
+      meta.textContent = t('nComments', { n: thread.comments.length });
       item.appendChild(meta);
     }
 
@@ -1514,7 +1526,7 @@ export function mountPreview(
       )
     );
     if (!headings.length) {
-      host.appendChild(stateBlock('No headings to outline.'));
+      host.appendChild(stateBlock(t('noHeadings')));
       return;
     }
     const lines = headings.map((h) => Number(h.getAttribute('data-source-line')));
@@ -1548,8 +1560,8 @@ export function mountPreview(
           ? String(openCount)
           : '✓';
         badge.title = openCount
-          ? openCount + ' open comment(s)'
-          : 'All resolved';
+          ? t('openCommentsCount', { n: openCount })
+          : t('allResolved');
         row.appendChild(badge);
       }
       row.addEventListener('click', () => {
@@ -1610,6 +1622,39 @@ export function mountPreview(
       }
     });
   }
+
+  // Relabel the once-built chrome and re-render the dynamic parts when the UI
+  // language changes (the document body itself is author content and is left
+  // untouched).
+  onLangChange(() => {
+    if (panel) {
+      panel.setAttribute('aria-label', t('reviewComments'));
+      const title = panel.querySelector('.mdr-side-title');
+      if (title) {
+        title.textContent = t('comments');
+      }
+      panel.querySelectorAll<HTMLElement>('.mdr-tab').forEach((tab) => {
+        tab.textContent = tab.dataset.tab === 'outline' ? t('outline') : t('inbox');
+      });
+      const close = panel.querySelector('.mdr-side-close');
+      if (close) {
+        close.setAttribute('aria-label', t('hideCommentsPanel'));
+        close.setAttribute('title', t('hidePanel'));
+      }
+    }
+    fab?.setAttribute('aria-label', t('openComments'));
+    addBtn.setAttribute('aria-label', t('addCommentLine'));
+    addBtn.title = t('commentOnLine');
+    cellBtn.setAttribute('aria-label', t('addCommentCell'));
+    cellBtn.title = t('commentOnCell');
+    const selLabel = selPop.querySelector('.mdr-sel-label');
+    if (selLabel) {
+      selLabel.textContent = t('commentLabel');
+    }
+    renderProperties(lastPropertiesHtml);
+    renderPanel();
+    renderThreads();
+  });
 
   if (adapter.onUpdate) {
     adapter.onUpdate((data) => render(data));

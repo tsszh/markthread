@@ -6,14 +6,14 @@
    ========================================================================== */
 
 :root {
-  --appbar-h: 54px;
-  --panel-w: 340px;
+  --appbar-h: 58px;
+  --panel-w: 360px;
   --tone-green-bg: #e7f6ed;
   --tone-green-fg: #15803d;
   --tone-green-bd: #bfe6cd;
-  --tone-red-bg: #fdecec;
-  --tone-red-fg: #b3261e;
-  --tone-red-bd: #f3c2c2;
+  --tone-red-bg: #fdeae8;
+  --tone-red-fg: #cc362b;
+  --tone-red-bd: #f4c4bd;
   --tone-amber-bg: #fdf3e0;
   --tone-amber-fg: #b45309;
   --tone-amber-bd: #f0d8a8;
@@ -23,6 +23,41 @@
   --tone-neutral-bg: #f1f3f5;
   --tone-neutral-fg: #6b7480;
   --tone-neutral-bd: #e2e6ea;
+}
+
+/* Status tones in dark mode: muted translucent fills, brightened text. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --tone-green-bg: #14301f; --tone-green-fg: #5fcf8a; --tone-green-bd: #1f4a30;
+    --tone-red-bg: #371a1a;   --tone-red-fg: #f08a86;   --tone-red-bd: #532727;
+    --tone-amber-bg: #352713; --tone-amber-fg: #e0a64a; --tone-amber-bd: #4f3a1a;
+    --tone-blue-bg: #1a2540;  --tone-blue-fg: #82aaff;  --tone-blue-bd: #2a3a5e;
+    --tone-neutral-bg: #1f222e; --tone-neutral-fg: #9aa0ae; --tone-neutral-bd: #2e3240;
+  }
+}
+:root[data-theme='dark'],
+body.vscode-dark {
+  --tone-green-bg: #14301f; --tone-green-fg: #5fcf8a; --tone-green-bd: #1f4a30;
+  --tone-red-bg: #371a1a;   --tone-red-fg: #f08a86;   --tone-red-bd: #532727;
+  --tone-amber-bg: #352713; --tone-amber-fg: #e0a64a; --tone-amber-bd: #4f3a1a;
+  --tone-blue-bg: #1a2540;  --tone-blue-fg: #82aaff;  --tone-blue-bd: #2a3a5e;
+  --tone-neutral-bg: #1f222e; --tone-neutral-fg: #9aa0ae; --tone-neutral-bd: #2e3240;
+}
+
+/* Accent-specific status retunes: keep the semantic chip distinct from the
+   brand accent when they share a hue family. Light and dark blocks set the
+   same keys so the dark block (higher specificity) wins cleanly in dark. */
+:root[data-accent='pine'] {
+  --tone-green-bg: #eaf7eb; --tone-green-fg: #2f9e44; --tone-green-bd: #c2e7c6;
+}
+:root[data-theme='dark'][data-accent='pine'] {
+  --tone-green-bg: #173220; --tone-green-fg: #74d28d; --tone-green-bd: #275231;
+}
+:root[data-accent='terracotta'] {
+  --tone-amber-bg: #fbf2d4; --tone-amber-fg: #8a6c00; --tone-amber-bd: #ecd99a;
+}
+:root[data-theme='dark'][data-accent='terracotta'] {
+  --tone-amber-bg: #33300f; --tone-amber-fg: #cdb04a; --tone-amber-bd: #4d4a1a;
 }
 
 .mdr-root {
@@ -72,15 +107,44 @@ body.mdr-app {
   box-sizing: border-box;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 14px;
-  background: var(--bg-card, #fff);
+  gap: 10px;
+  padding: 0 16px;
+  background: color-mix(in srgb, var(--bg-card, #fff) 80%, transparent);
+  -webkit-backdrop-filter: saturate(180%) blur(14px);
+  backdrop-filter: saturate(180%) blur(14px);
   border-bottom: 1px solid var(--border, #e4e7ec);
+}
+
+/* Reading progress: a hairline under the app bar that fills as the reader moves
+   through the document — quiet positional feedback, not decoration. */
+.mdr-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  overflow: hidden;
+  background: transparent;
+  pointer-events: none;
+}
+.mdr-progress-fill {
+  height: 100%;
+  width: 100%;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg, var(--accent, #5b53dd), var(--accent-strong, #4842c4));
+  transition: transform 0.08s linear;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mdr-progress-fill {
+    transition: none;
+  }
 }
 .mdr-brand {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
+  font-family: var(--font-display, inherit);
   font-weight: 700;
   color: var(--text-strong, #1a1f29);
 }
@@ -88,15 +152,23 @@ body.mdr-app {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 7px;
-  background: var(--accent, #3b6fe0);
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: linear-gradient(150deg, var(--accent, #5b53dd), var(--accent-strong, #4842c4));
   color: #fff;
-  font-size: 14px;
+  font-size: 15px;
+  box-shadow: 0 2px 8px -1px color-mix(in srgb, var(--accent, #5b53dd) 55%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+.mdr-logo .mdr-svg {
+  width: 17px;
+  height: 17px;
+  stroke-width: 2.1;
 }
 .mdr-brand-name {
-  font-size: 15px;
+  font-size: 15.5px;
+  letter-spacing: -0.01em;
 }
 .mdr-spacer {
   flex: 1 1 auto;
@@ -106,8 +178,9 @@ body.mdr-app {
 .mdr-vtabs {
   display: inline-flex;
   background: var(--bg-subtle, #f1f3f5);
-  border-radius: 8px;
-  padding: 2px;
+  border: 1px solid var(--border, #e4e7ec);
+  border-radius: 10px;
+  padding: 3px;
   margin-left: 6px;
 }
 .mdr-vtab {
@@ -117,13 +190,17 @@ body.mdr-app {
   font-size: 13px;
   font-weight: 600;
   padding: 5px 14px;
-  border-radius: 6px;
+  border-radius: 7px;
   cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.mdr-vtab:hover {
+  color: var(--text-strong, #1a1f29);
 }
 .mdr-vtab.active {
   background: var(--bg-card, #fff);
-  color: var(--text-strong, #1a1f29);
-  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.12);
+  color: var(--accent-strong, #4842c4);
+  box-shadow: var(--shadow-sm, 0 1px 2px rgba(16, 24, 40, 0.12));
 }
 
 .mdr-appbtn {
@@ -133,23 +210,32 @@ body.mdr-app {
   border: 1px solid var(--border-strong, #d4d9e0);
   background: var(--bg-card, #fff);
   color: var(--text-body, #2b3340);
-  border-radius: 8px;
-  padding: 6px 12px;
+  border-radius: 9px;
+  padding: 6px 13px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  min-height: 34px;
+  min-height: 36px;
+  transition: background 0.14s ease, border-color 0.14s ease, transform 0.08s ease,
+    box-shadow 0.14s ease;
 }
 .mdr-appbtn:hover {
   background: var(--bg-hover, #eef4ff);
+  border-color: var(--border-strong, #d4d9e0);
+}
+.mdr-appbtn:active {
+  transform: translateY(1px);
 }
 .mdr-appbtn.primary {
-  background: var(--accent, #3b6fe0);
-  border-color: var(--accent, #3b6fe0);
-  color: #fff;
+  background: linear-gradient(150deg, var(--accent, #5b53dd), var(--accent-strong, #4842c4));
+  border-color: transparent;
+  color: var(--accent-contrast, #fff);
+  box-shadow: 0 2px 8px -2px color-mix(in srgb, var(--accent, #5b53dd) 60%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 .mdr-appbtn.primary:hover {
-  background: var(--accent-strong, #2f5bd0);
+  filter: brightness(1.05);
+  background: linear-gradient(150deg, var(--accent, #5b53dd), var(--accent-strong, #4842c4));
 }
 .mdr-appbtn[aria-pressed='true'] {
   background: var(--accent-soft, #eaf0fd);
@@ -158,9 +244,90 @@ body.mdr-app {
 }
 .mdr-appbtn.mdr-iconbtn {
   padding: 0;
-  width: 34px;
+  width: 36px;
   justify-content: center;
   font-size: 18px;
+}
+.mdr-appbtn.mdr-iconbtn .mdr-svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Accent + language pickers. The compound selector (.mdr-menu.mdr-accent-menu)
+   raises specificity above the generic `.mdr-menu button { display:block }`
+   rule below, which otherwise collapses the flex row and overlaps the swatch. */
+.mdr-accent-menu {
+  min-width: 198px;
+  padding: 6px;
+}
+.mdr-menu-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted, #6b7480);
+  padding: 5px 9px 7px;
+}
+.mdr-menu.mdr-accent-menu button {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+.mdr-swatch {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
+  border-radius: 5px;
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+.mdr-menu.mdr-accent-menu button[aria-checked='true'] {
+  background: var(--accent-soft, #eaf0fd);
+  color: var(--accent-strong, #4842c4);
+  font-weight: 600;
+}
+.mdr-menu.mdr-accent-menu button[aria-checked='true'] .mdr-swatch {
+  box-shadow: 0 0 0 2px var(--bg-card, #fff), 0 0 0 3.5px var(--accent, #5b53dd);
+}
+
+/* Compact globe button shows the active language code; toggles EN <-> 中. */
+.mdr-langbtn {
+  gap: 5px;
+  padding: 0 9px;
+  width: auto;
+  min-width: 36px;
+  font-variant-numeric: tabular-nums;
+}
+.mdr-langbtn .mdr-svg {
+  width: 16px;
+  height: 16px;
+}
+.mdr-lang-code {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* Theme toggle: cycles system -> light -> dark and shows the current mode's
+   icon (driven by the button's data-mode). */
+.mdr-theme-sun,
+.mdr-theme-moon,
+.mdr-theme-system {
+  display: none;
+}
+#mdr-theme[data-mode='light'] .mdr-theme-sun {
+  display: block;
+}
+#mdr-theme[data-mode='dark'] .mdr-theme-moon {
+  display: block;
+}
+#mdr-theme[data-mode='system'] .mdr-theme-system {
+  display: block;
 }
 .mdr-appbadge {
   min-width: 18px;
@@ -272,12 +439,30 @@ body.mdr-app {
    max-width cap); the side gutters grow with the viewport so the left margin
    keeps room for comment markers and the popup.
    -------------------------------------------------------------------------- */
+/* The reading "stage": a calm canvas the document sheet floats on. When the
+   comments panel is open the stage gains right padding so the sheet recenters
+   into the free space instead of sliding under the panel. */
+body.mdr-app .mdr-main {
+  padding: 34px clamp(1rem, 5vw, 3rem) 128px;
+  transition: padding 0.24s ease;
+}
+body.mdr-app.mdr-panel-open .mdr-main {
+  padding-right: calc(var(--panel-w) + 30px);
+}
+/* The document sheet: rendered Markdown on a centered paper surface, capped to a
+   comfortable long-form measure (~75ch) for reading immersion. */
 body.mdr-app #mdr-preview {
-  --gutter: clamp(2.2rem, 5vw, 6rem);
-  min-width: 320px;
-  max-width: none;
-  margin: 0;
-  padding: 28px var(--gutter) 120px;
+  --gutter: clamp(1.8rem, 3vw, 3rem);
+  position: relative;
+  width: 100%;
+  max-width: 47rem;
+  min-width: 0;
+  margin: 0 auto;
+  background: var(--bg-card, #fff);
+  border: 1px solid var(--border, #e4e7ec);
+  border-radius: 18px;
+  box-shadow: var(--shadow-card, 0 1px 2px rgba(16, 24, 40, 0.05));
+  padding: clamp(2.2rem, 4vw, 3.4rem) var(--gutter) clamp(3.5rem, 7vw, 5.5rem);
 }
 /* Wide blocks keep their own horizontal scroll instead of stretching prose. */
 body.mdr-app #mdr-preview table,
@@ -289,10 +474,10 @@ body.mdr-app #mdr-preview pre:not(.mermaid) {
    Compact frontmatter / properties
    -------------------------------------------------------------------------- */
 .mdr-props {
-  margin: 0 0 1.4rem;
+  margin: 0 0 1.8rem;
   border: 1px solid var(--border, #e4e7ec);
   border-radius: 10px;
-  background: var(--bg-card, #fff);
+  background: var(--bg-subtle, #f7f8fa);
   overflow: hidden;
 }
 .mdr-props-summary {
@@ -1204,7 +1389,7 @@ body.mdr-app #mdr-preview pre:not(.mermaid) {
   background: linear-gradient(
     90deg,
     var(--bg-subtle, #f1f3f5) 25%,
-    #e9edf2 37%,
+    color-mix(in srgb, var(--bg-subtle, #f1f3f5) 55%, var(--border, #e9edf2)) 37%,
     var(--bg-subtle, #f1f3f5) 63%
   );
   background-size: 400% 100%;
@@ -1356,9 +1541,22 @@ body.mdr-app #mdr-preview pre:not(.mermaid) {
    with a dimming backdrop (the only place a scrim is used).
    -------------------------------------------------------------------------- */
 @media (max-width: 879px) {
+  /* On phones the sheet flattens to full-bleed reading: a floating card with
+     side margins would waste the narrow viewport. */
+  body.mdr-app .mdr-main {
+    padding: 12px 0 96px;
+  }
+  body.mdr-app.mdr-panel-open .mdr-main {
+    padding-right: 0;
+  }
   body.mdr-app #mdr-preview {
-    --gutter: 1.4rem;
-    padding-top: 18px;
+    --gutter: 1.3rem;
+    max-width: none;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 8px var(--gutter) 96px;
   }
   .mdr-side-panel {
     top: 0;

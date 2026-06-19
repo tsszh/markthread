@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.29
+
+- Added an **Appearance** section to the MarkThread side panel's settings (the gear button), so the preview's language, theme, and accent can be changed without opening VS Code settings. Language and theme use compact segmented controls (Auto / EN / 中 and System / Light / Dark), and the accent is a row of live colour swatches. Choices apply instantly — they write the same `markThread.appearance.*` settings, and any open Review Preview updates live.
+
+## 0.1.28
+
+- Refreshed the visual design of both the standalone web app and the VS Code preview. A threaded-comment brand mark, a display typeface for headings (Inter Tight), tinted layered shadows, and a consistent corner-radius scale replace the previous generic blue-on-grey look.
+- Added a **switchable accent palette** with five curated options — Oxblood, Graphite ink (near-monochrome), Pine green, Terracotta, and Petrol teal. Pick one from the palette button in the standalone toolbar (persisted per browser, defaults to Oxblood). Semantic status chips are retuned per accent so the brand colour never collides with the approve-green or warning-amber meaning.
+- Added a real **dark mode**, orthogonal to the accent. The standalone app gets a light/dark toggle in the toolbar (persisted, defaults to the OS preference); the VS Code preview follows VS Code's own light/dark theme. Every accent works in both modes, and alerts, tables, code, status chips, and the review inbox all adapt.
+- Polished the review chrome: a frosted sticky toolbar, tactile buttons, refined segmented tabs, and a branded text-selection highlight that echoes the annotation motif.
+- Reworked reading for **long-form immersion**: the standalone app now renders the document on a centered paper "sheet" capped to a comfortable measure (instead of edge-to-edge text), which recenters into the free space when the comments panel opens. Full-width heading underlines are replaced with editorial spacing and a short accent section marker, and a reading-progress hairline under the toolbar tracks scroll position. The VS Code preview gets the same capped reading measure.
+- Added a global **English / 简体中文 language switch**. A compact globe button in the toolbar toggles the entire interface language in place (no reload) and remembers the choice per browser, defaulting to the browser locale. Every piece of chrome localizes — toolbar, menus, the source editor, the settings dialog, toasts, and the whole review experience (comment threads, quick-reply composer, inbox filters, outline, gutter markers, and relative timestamps). Authored Markdown and saved verdict labels are left untouched.
+- Polished the accent palette menu: labels no longer collide with their colour swatches (a CSS specificity fix), and the open menu now has a clear "Accent" header, rounded swatch chips, and a soft highlight pill on the active palette.
+- Exposed **appearance settings for the VS Code preview** (`markThread.appearance.language`, `markThread.appearance.theme`, `markThread.appearance.accent`), editable from the Settings editor or `settings.json`. Language defaults to following VS Code's display language; the accent picks any of the five palettes; and the theme now offers **Follow system / Light / Dark** — "system" tracks the active VS Code color theme live. The standalone web app's theme toggle gained the same three-way **Follow system** option.
+
 ## 0.1.27
 
 - The **Review Comments** side panel now lists selection- and table-cell-anchored comments too (previously it only showed whole-line gutter threads, so cell comments were invisible there even though they were stored and appeared when copying). Cell comments show their `Table N (L<line>), row R, column C (Header)` address as the badge, keeping the panel in sync with what is actually stored in memory.

@@ -4,33 +4,59 @@
    high text contrast, no neon / no animated gradients.
    ========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700;800&family=Inter+Tight:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 
+/* ==========================================================================
+   Design tokens. One signature accent ("iris"), warm-cool neutrals, layered
+   tinted shadows. Light is the default; dark mode follows the OS, an explicit
+   [data-theme="dark"], or VS Code's own .vscode-dark body class.
+   ========================================================================== */
 :root {
-  /* Surfaces */
-  --bg-page: #f7f8fa;
+  /* Surfaces — warm "paper" neutrals to complement oxblood */
+  --bg-page: #f5f3f3;
   --bg-card: #ffffff;
-  --bg-subtle: #f1f3f5;
-  --bg-hover: #eef4ff;
+  --bg-subtle: #ece9ea;
+  --bg-hover: #f7ecee;
 
   /* Text */
-  --text-body: #2b3340;
-  --text-strong: #1a1f29;
-  --text-muted: #6b7480;
+  --text-body: #3e3a3b;
+  --text-strong: #1b1819;
+  --text-muted: #756f70;
 
-  /* Accents */
-  --accent: #3b6fe0;
-  --accent-strong: #2f5bd0;
-  --accent-soft: #eaf0fd;
+  /* Accent — oxblood, the product's memory point */
+  --accent: #8a2f3b;
+  --accent-strong: #6f2530;
+  --accent-soft: #f4e6e9;
+  --accent-contrast: #ffffff;
+
+  /* Selection / highlight (the annotation motif) */
+  --highlight: #ffeaa8;
+  --highlight-border: #f0cf6e;
 
   /* Borders */
-  --border: #e4e7ec;
-  --border-strong: #d4d9e0;
+  --border: #e7e2e3;
+  --border-strong: #d7d0d1;
 
-  /* Code */
-  --code-bg: #f3f4f7;
-  --code-text: #b3306b;
-  --code-border: #e6e8ee;
+  /* Code (light surface; code blocks are theme-aware now) */
+  --code-bg: #edecf0;
+  --code-text: #8a2f3b;
+  --code-border: #e3e2ea;
+  --pre-bg: #f6f7f9;
+  --pre-fg: #30343d;
+  --pre-border: #e5e7eb;
+
+  /* Syntax highlighting — light palette (GitHub-light flavored) */
+  --hl-comment: #6e7781;
+  --hl-keyword: #cf222e;
+  --hl-string: #0a3069;
+  --hl-number: #0550ae;
+  --hl-title: #8250df;
+  --hl-type: #953800;
+  --hl-tag: #116329;
+  --hl-deletion: #82071e;
+
+  /* Alert tint strength (raised in dark for parity) */
+  --callout-mix: 13%;
 
   /* Alerts */
   --alert-note: #3b6fe0;
@@ -38,9 +64,258 @@
   --alert-warning: #d98a00;
   --alert-caution: #d64545;
 
-  --radius-lg: 10px;
-  --radius-sm: 5px;
-  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 4px 16px rgba(16, 24, 40, 0.06);
+  /* Shape */
+  --radius-lg: 14px;
+  --radius-md: 9px;
+  --radius-sm: 6px;
+  --radius-pill: 999px;
+
+  /* Elevation — tinted toward a warm ink, never pure black */
+  --shadow-card: 0 1px 2px rgba(40, 22, 26, 0.06), 0 10px 28px -12px rgba(40, 22, 26, 0.14);
+  --shadow-pop: 0 18px 50px -14px rgba(40, 22, 26, 0.34), 0 2px 8px rgba(40, 22, 26, 0.12);
+  --shadow-sm: 0 1px 2px rgba(40, 22, 26, 0.09);
+
+  /* Type */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-display: 'Inter Tight', 'Inter', -apple-system, BlinkMacSystemFont,
+    'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono',
+    Menlo, monospace;
+
+  color-scheme: light;
+}
+
+/* ---- Dark mode tokens ---- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg-page: #131011;
+    --bg-card: #1b1718;
+    --bg-subtle: #221d1e;
+    --bg-hover: #2b2023;
+    --text-body: #cbc4c5;
+    --text-strong: #f4f0f1;
+    --text-muted: #8d8688;
+    --accent: #db7c88;
+    --accent-strong: #e89aa3;
+    --accent-soft: #2e1a1f;
+    --accent-contrast: #1a1011;
+    --highlight: #4a4226;
+    --highlight-border: #6b6033;
+    --border: #2b2527;
+    --border-strong: #3b3335;
+    --code-bg: #20212a;
+    --code-text: #e29aa3;
+    --code-border: #2a2c38;
+    --pre-bg: #15161d;
+    --pre-fg: #d8dbe4;
+    --pre-border: #262834;
+    --hl-comment: #7c8493;
+    --hl-keyword: #c792ea;
+    --hl-string: #c3e88d;
+    --hl-number: #f78c6c;
+    --hl-title: #82aaff;
+    --hl-type: #ffcb6b;
+    --hl-tag: #89ddff;
+    --hl-deletion: #f07178;
+    --callout-mix: 20%;
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 32px -12px rgba(0, 0, 0, 0.6);
+    --shadow-pop: 0 20px 56px -14px rgba(0, 0, 0, 0.72), 0 2px 10px rgba(0, 0, 0, 0.5);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45);
+    color-scheme: dark;
+  }
+}
+
+/* Explicit dark (web toggle) + VS Code dark theme share the same tokens. */
+:root[data-theme='dark'],
+body.vscode-dark {
+  --bg-page: #131011;
+  --bg-card: #1b1718;
+  --bg-subtle: #221d1e;
+  --bg-hover: #2b2023;
+  --text-body: #cbc4c5;
+  --text-strong: #f4f0f1;
+  --text-muted: #8d8688;
+  --accent: #db7c88;
+  --accent-strong: #e89aa3;
+  --accent-soft: #2e1a1f;
+  --accent-contrast: #1a1011;
+  --highlight: #4a4226;
+  --highlight-border: #6b6033;
+  --border: #2b2527;
+  --border-strong: #3b3335;
+  --code-bg: #20212a;
+  --code-text: #e29aa3;
+  --code-border: #2a2c38;
+  --pre-bg: #15161d;
+  --pre-fg: #d8dbe4;
+  --pre-border: #262834;
+  --hl-comment: #7c8493;
+  --hl-keyword: #c792ea;
+  --hl-string: #c3e88d;
+  --hl-number: #f78c6c;
+  --hl-title: #82aaff;
+  --hl-type: #ffcb6b;
+  --hl-tag: #89ddff;
+  --hl-deletion: #f07178;
+  --callout-mix: 20%;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 32px -12px rgba(0, 0, 0, 0.6);
+  --shadow-pop: 0 20px 56px -14px rgba(0, 0, 0, 0.72), 0 2px 10px rgba(0, 0, 0, 0.5);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45);
+  color-scheme: dark;
+}
+
+/* Explicit light wins over everything, including VS Code's own .vscode-dark
+   body class (so "Always light" works even in a dark editor). The higher
+   specificity of :root[data-theme='light'] beats body.vscode-dark. */
+:root[data-theme='light'] {
+  --bg-page: #f5f3f3;
+  --bg-card: #ffffff;
+  --bg-subtle: #ece9ea;
+  --bg-hover: #f7ecee;
+  --text-body: #3e3a3b;
+  --text-strong: #1b1819;
+  --text-muted: #756f70;
+  --accent: #8a2f3b;
+  --accent-strong: #6f2530;
+  --accent-soft: #f4e6e9;
+  --accent-contrast: #ffffff;
+  --highlight: #ffeaa8;
+  --highlight-border: #f0cf6e;
+  --border: #e7e2e3;
+  --border-strong: #d7d0d1;
+  --code-bg: #edecf0;
+  --code-text: #8a2f3b;
+  --code-border: #e3e2ea;
+  --pre-bg: #f6f7f9;
+  --pre-fg: #30343d;
+  --pre-border: #e5e7eb;
+  --hl-comment: #6e7781;
+  --hl-keyword: #cf222e;
+  --hl-string: #0a3069;
+  --hl-number: #0550ae;
+  --hl-title: #8250df;
+  --hl-type: #953800;
+  --hl-tag: #116329;
+  --hl-deletion: #82071e;
+  --callout-mix: 13%;
+  --shadow-card: 0 1px 2px rgba(40, 22, 26, 0.06), 0 10px 28px -12px rgba(40, 22, 26, 0.14);
+  --shadow-pop: 0 18px 50px -14px rgba(40, 22, 26, 0.34), 0 2px 8px rgba(40, 22, 26, 0.12);
+  --shadow-sm: 0 1px 2px rgba(40, 22, 26, 0.09);
+  color-scheme: light;
+}
+
+/* ==========================================================================
+   Accent palettes. The accent is orthogonal to light/dark: pick one of five
+   via [data-accent] (defaults to oxblood when unset). Each accent sets the
+   SAME property keys in its light and dark block, so the higher-specificity
+   dark block cleanly overrides the light one in dark mode.
+   ========================================================================== */
+
+/* ---- Oxblood (default): mature, documentary, "review = red pen" ---- */
+:root[data-accent='oxblood'] {
+  --accent: #8a2f3b;
+  --accent-strong: #6f2530;
+  --accent-soft: #f4e6e9;
+  --accent-contrast: #ffffff;
+  --code-text: #8a2f3b;
+  --bg-hover: #f7ecee;
+}
+:root[data-theme='dark'][data-accent='oxblood'] {
+  --accent: #db7c88;
+  --accent-strong: #e89aa3;
+  --accent-soft: #2e1a1f;
+  --accent-contrast: #1a1011;
+  --code-text: #e29aa3;
+  --bg-hover: #2b2023;
+}
+
+/* ---- Graphite ink: near-monochrome, craft over colour (Linear/Vercel) ---- */
+:root[data-accent='ink'] {
+  --accent: #26262b;
+  --accent-strong: #0e0e12;
+  --accent-soft: #eceae7;
+  --accent-contrast: #ffffff;
+  --code-text: #2a2a30;
+  --bg-hover: #efece8;
+}
+:root[data-theme='dark'][data-accent='ink'] {
+  --accent: #ecebe6;
+  --accent-strong: #ffffff;
+  --accent-soft: #26241f;
+  --accent-contrast: #14130f;
+  --code-text: #ded9d2;
+  --bg-hover: #262320;
+}
+
+/* ---- Pine green: calm, editorial; cool-neutral paper ---- */
+:root[data-accent='pine'] {
+  --bg-page: #f3f5f3;
+  --bg-subtle: #e8ebe8;
+  --bg-hover: #e8f1eb;
+  --accent: #1f6f4f;
+  --accent-strong: #195a40;
+  --accent-soft: #e4f0ea;
+  --accent-contrast: #ffffff;
+  --code-text: #1f6f4f;
+  --border: #e1e6e2;
+  --border-strong: #cfd6d0;
+}
+:root[data-theme='dark'][data-accent='pine'] {
+  --bg-page: #0f1312;
+  --bg-subtle: #1c211f;
+  --bg-hover: #17271f;
+  --accent: #5cba8c;
+  --accent-strong: #78c8a0;
+  --accent-soft: #13251c;
+  --accent-contrast: #0a140e;
+  --code-text: #78c8a0;
+  --border: #222826;
+  --border-strong: #323b37;
+}
+
+/* ---- Terracotta: warm, human, hand-marked; warm paper ---- */
+:root[data-accent='terracotta'] {
+  --accent: #b4502f;
+  --accent-strong: #993f24;
+  --accent-soft: #f8e8e1;
+  --accent-contrast: #ffffff;
+  --code-text: #b4502f;
+  --bg-hover: #f6ebe5;
+}
+:root[data-theme='dark'][data-accent='terracotta'] {
+  --accent: #e0875f;
+  --accent-strong: #eba17d;
+  --accent-soft: #2d1c13;
+  --accent-contrast: #190d07;
+  --code-text: #ea9c79;
+  --bg-hover: #2a1f18;
+}
+
+/* ---- Petrol teal: cool, crisp; cool-neutral paper ---- */
+:root[data-accent='petrol'] {
+  --bg-page: #f2f5f5;
+  --bg-subtle: #e7eced;
+  --bg-hover: #e5f0f1;
+  --accent: #0e6e72;
+  --accent-strong: #0a585c;
+  --accent-soft: #e0eef0;
+  --accent-contrast: #ffffff;
+  --code-text: #0e6e72;
+  --border: #e0e6e6;
+  --border-strong: #ced6d6;
+}
+:root[data-theme='dark'][data-accent='petrol'] {
+  --bg-page: #0f1314;
+  --bg-subtle: #1b2122;
+  --bg-hover: #142a2c;
+  --accent: #4cbac0;
+  --accent-strong: #6ccbd0;
+  --accent-soft: #0f2729;
+  --accent-contrast: #051618;
+  --code-text: #6ccbd0;
+  --border: #222829;
+  --border-strong: #323b3c;
 }
 
 /* --------------------------------------------------------------------------
@@ -53,18 +328,26 @@ body,
 .vscode-body {
   background-color: var(--bg-page) !important;
   color: var(--text-body) !important;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif !important;
+  font-family: var(--font-sans) !important;
   font-size: 16px !important;
   line-height: 1.75 !important;
-  letter-spacing: 0.005em !important;
-  /* Grow with the window instead of a hard cap. Keep comfortable side gutters;
-     when the floating TOC is visible, extra right-side room is reserved below. */
-  max-width: 90% !important;
+  letter-spacing: 0.004em !important;
+  font-feature-settings: 'cv05' 1, 'ss01' 1, 'cv11' 1 !important;
+  /* Cap the line length to a comfortable reading measure (~70-75ch) and center
+     it. A long-form measure is what turns this from an "admin pane" into a
+     reading surface. The standalone app overrides this with its own document
+     "sheet" (see review-preview.css). */
+  max-width: min(48rem, 92%) !important;
   margin: 0 auto !important;
   padding: 2.5rem 2.75rem 4rem !important;
   -webkit-font-smoothing: antialiased !important;
   text-rendering: optimizeLegibility !important;
+}
+
+/* Branded text selection echoes the highlight/annotation motif. */
+::selection {
+  background: var(--highlight) !important;
+  color: var(--text-strong) !important;
 }
 
 p {
@@ -82,27 +365,40 @@ strong, b {
 
 h1, h2, h3, h4, h5, h6 {
   color: var(--text-strong) !important;
+  font-family: var(--font-display) !important;
   font-weight: 700 !important;
-  line-height: 1.3 !important;
-  letter-spacing: -0.01em !important;
+  line-height: 1.25 !important;
+  letter-spacing: -0.018em !important;
   margin: 2.2rem 0 1rem !important;
 }
 
+/* Editorial hierarchy: scale, weight and rhythm carry the structure instead of
+   full-width hairlines (which read as table/admin chrome). h2 gets a short
+   accent tick — a calm section marker that also threads the brand colour. */
 h1 {
-  font-size: 2rem !important;
-  margin: 0.5rem 0 1.5rem !important;
-  padding-bottom: 0.5rem !important;
-  border-bottom: 1px solid var(--border) !important;
+  font-size: 2.35rem !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.03em !important;
+  margin: 0.2rem 0 1.6rem !important;
 }
 
 h2 {
-  font-size: 1.5rem !important;
-  margin-top: 2.6rem !important;
-  padding-bottom: 0.35rem !important;
-  border-bottom: 1px solid var(--border) !important;
+  font-size: 1.55rem !important;
+  margin-top: 3rem !important;
+  margin-bottom: 1.05rem !important;
+}
+h2::after {
+  content: '' !important;
+  display: block !important;
+  width: 2.3rem !important;
+  height: 3px !important;
+  margin-top: 0.6rem !important;
+  border-radius: 999px !important;
+  background: var(--accent) !important;
+  opacity: 0.9 !important;
 }
 
-h3 { font-size: 1.22rem !important; }
+h3 { font-size: 1.22rem !important; margin-top: 2rem !important; }
 h4 { font-size: 1.05rem !important; }
 h5 { font-size: 0.95rem !important; color: var(--text-muted) !important; }
 h6 { font-size: 0.88rem !important; color: var(--text-muted) !important; }
@@ -148,7 +444,7 @@ tr:last-child td {
 }
 
 tr:nth-child(even) td {
-  background: #fbfcfd !important;
+  background: var(--bg-subtle) !important;
 }
 
 tr:hover td {
@@ -195,11 +491,19 @@ blockquote strong { color: var(--text-strong) !important; }
 .markdown-alert {
   margin: 1.5rem 0 !important;
   padding: 0.85rem 1.1rem !important;
-  border: 1px solid transparent !important;
+  /* Blend the callout hue into the current surface so the fill reads clearly in
+     both light and dark (and under every accent), instead of a flat alpha. */
+  border: 1px solid
+    color-mix(in srgb, rgb(var(--callout-color, 100, 116, 139)) 34%, var(--bg-card)) !important;
   border-left: 4px solid rgb(var(--callout-color, 100, 116, 139)) !important;
-  border-radius: var(--radius-sm) !important;
+  border-radius: var(--radius-md) !important;
   box-shadow: none !important;
   color: var(--text-body) !important;
+  background: color-mix(
+    in srgb,
+    rgb(var(--callout-color, 100, 116, 139)) var(--callout-mix, 13%),
+    var(--bg-card)
+  ) !important;
 }
 
 .callout > .callout-title,
@@ -225,36 +529,42 @@ blockquote strong { color: var(--text-strong) !important; }
 .callout > p:last-child,
 .markdown-alert > p:last-child { margin-bottom: 0 !important; }
 
+/* Each callout type only sets its colour triplet; the tinted background,
+   border, and title colour are derived from it so both light and dark adapt.
+   Title colour is brightened in dark mode via the alt triplet. */
+.markdown-alert > .markdown-alert-title {
+  color: rgb(var(--callout-color, 100, 116, 139)) !important;
+}
+:root[data-theme='dark'] .markdown-alert > .markdown-alert-title,
+body.vscode-dark .markdown-alert > .markdown-alert-title {
+  color: rgb(var(--callout-color-lift, var(--callout-color, 148, 163, 184))) !important;
+}
+
 /* ---- NOTE (blue) ---- */
 .callout[data-callout="note"],
-.callout[data-callout="info"] { --callout-color: 29, 78, 216; background: #e8f0fe !important; }
-.markdown-alert-note { background: #e8f0fe !important; border-left-color: #1d4ed8 !important; }
-.markdown-alert-note > .markdown-alert-title { color: #1d4ed8 !important; }
+.callout[data-callout="info"],
+.markdown-alert-note { --callout-color: 59, 111, 224; --callout-color-lift: 130, 170, 255; }
 
 /* ---- TIP (green) ---- */
 .callout[data-callout="tip"],
 .callout[data-callout="hint"],
-.callout[data-callout="success"] { --callout-color: 21, 128, 61; background: #e7f6ed !important; }
-.markdown-alert-tip { background: #e7f6ed !important; border-left-color: #15803d !important; }
-.markdown-alert-tip > .markdown-alert-title { color: #15803d !important; }
+.callout[data-callout="success"],
+.markdown-alert-tip { --callout-color: 21, 128, 61; --callout-color-lift: 74, 200, 130; }
 
-/* ---- IMPORTANT (purple) ---- */
-.callout[data-callout="important"] { --callout-color: 109, 40, 217; background: #f2ecfe !important; }
-.markdown-alert-important { background: #f2ecfe !important; border-left-color: #6d28d9 !important; }
-.markdown-alert-important > .markdown-alert-title { color: #6d28d9 !important; }
+/* ---- IMPORTANT (oxblood, the brand hue) ---- */
+.callout[data-callout="important"],
+.markdown-alert-important { --callout-color: 138, 47, 59; --callout-color-lift: 219, 124, 136; }
 
 /* ---- WARNING (amber) ---- */
 .callout[data-callout="warning"],
-.callout[data-callout="attention"] { --callout-color: 180, 83, 9; background: #fdf3e0 !important; }
-.markdown-alert-warning { background: #fdf3e0 !important; border-left-color: #b45309 !important; }
-.markdown-alert-warning > .markdown-alert-title { color: #b45309 !important; }
+.callout[data-callout="attention"],
+.markdown-alert-warning { --callout-color: 180, 83, 9; --callout-color-lift: 230, 160, 60; }
 
-/* ---- CAUTION (red) ---- */
+/* ---- CAUTION (bright red, kept distinct from the oxblood brand) ---- */
 .callout[data-callout="caution"],
 .callout[data-callout="danger"],
-.callout[data-callout="error"] { --callout-color: 185, 28, 28; background: #fdebec !important; }
-.markdown-alert-caution { background: #fdebec !important; border-left-color: #b91c1c !important; }
-.markdown-alert-caution > .markdown-alert-title { color: #b91c1c !important; }
+.callout[data-callout="error"],
+.markdown-alert-caution { --callout-color: 207, 58, 46; --callout-color-lift: 240, 124, 112; }
 
 /* --------------------------------------------------------------------------
    Frontmatter "Properties" table
@@ -293,7 +603,7 @@ table.frontmatter {
 table.frontmatter th,
 table.frontmatter td {
   padding: 9px 16px !important;
-  border-bottom: 1px solid #eef0f3 !important;
+  border-bottom: 1px solid var(--border) !important;
   vertical-align: top !important;
   text-align: left !important;
   background: transparent !important;
@@ -336,10 +646,10 @@ table.frontmatter code {
 .frontmatter-error {
   margin: 0 0 2rem !important;
   padding: 0.85rem 1.1rem !important;
-  border: 1px solid #f3c0c0 !important;
+  border: 1px solid rgb(185 28 28 / 0.3) !important;
   border-radius: var(--radius-sm) !important;
-  background: #fdecec !important;
-  color: #b3306b !important;
+  background: rgb(185 28 28 / 0.1) !important;
+  color: var(--alert-caution) !important;
 }
 
 /* --------------------------------------------------------------------------
@@ -347,8 +657,8 @@ table.frontmatter code {
    -------------------------------------------------------------------------- */
 
 code {
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace !important;
-  font-size: 0.88em !important;
+  font-family: var(--font-mono) !important;
+  font-size: 0.86em !important;
 }
 
 /* Inline code */
@@ -360,18 +670,20 @@ p > code, li > code, td > code, blockquote > p > code, h1 > code, h2 > code, h3 
   border-radius: var(--radius-sm) !important;
   white-space: nowrap !important;
   word-break: keep-all !important;
+  font-weight: 500 !important;
 }
 
 /* Code blocks (exclude mermaid: it owns its own theme/background) */
 pre:not(.mermaid) {
-  background: #1f2430 !important;
-  color: #e6e9ef !important;
-  border: 1px solid #2a3040 !important;
+  background: var(--pre-bg) !important;
+  color: var(--pre-fg) !important;
+  border: 1px solid var(--pre-border) !important;
   border-radius: var(--radius-lg) !important;
-  padding: 1rem 1.1rem !important;
+  padding: 1.05rem 1.2rem !important;
   overflow-x: auto !important;
   line-height: 1.6 !important;
   margin: 1.4rem 0 !important;
+  box-shadow: var(--shadow-card) !important;
 }
 
 pre:not(.mermaid) code {
@@ -386,43 +698,44 @@ pre:not(.mermaid) code {
 /* Syntax highlighting tokens.
    Highlight.js is the highlighter used by both the VS Code built-in Markdown
    preview and our local preview server (markdown-it `highlight` option), so the
-   same `.hljs-*` class names are colored here for a consistent dark palette. */
+   same `.hljs-*` class names are colored here. Colors come from theme variables
+   (--hl-*) so the palette flips with light/dark. */
 .hljs-comment,
-.hljs-quote { color: #7c8493 !important; font-style: italic !important; }
+.hljs-quote { color: var(--hl-comment) !important; font-style: italic !important; }
 .hljs-keyword,
 .hljs-selector-tag,
 .hljs-literal,
 .hljs-doctag,
-.hljs-name { color: #c792ea !important; }
+.hljs-name { color: var(--hl-keyword) !important; }
 .hljs-string,
 .hljs-regexp,
 .hljs-addition,
-.hljs-meta-string { color: #c3e88d !important; }
+.hljs-meta-string { color: var(--hl-string) !important; }
 .hljs-number,
 .hljs-symbol,
 .hljs-bullet,
-.hljs-link { color: #f78c6c !important; }
+.hljs-link { color: var(--hl-number) !important; }
 .hljs-title,
 .hljs-section,
 .hljs-title.function_,
-.hljs-built_in { color: #82aaff !important; }
+.hljs-built_in { color: var(--hl-title) !important; }
 .hljs-class .hljs-title,
 .hljs-type,
 .hljs-attr,
 .hljs-attribute,
-.hljs-variable.constant_ { color: #ffcb6b !important; }
+.hljs-variable.constant_ { color: var(--hl-type) !important; }
 .hljs-property,
 .hljs-variable,
 .hljs-template-variable,
-.hljs-params { color: #e6e9ef !important; }
-.hljs-tag { color: #89ddff !important; }
+.hljs-params { color: var(--pre-fg) !important; }
+.hljs-tag { color: var(--hl-tag) !important; }
 .hljs-selector-id,
 .hljs-selector-class,
 .hljs-selector-attr,
-.hljs-selector-pseudo { color: #ffcb6b !important; }
+.hljs-selector-pseudo { color: var(--hl-type) !important; }
 .hljs-meta,
-.hljs-comment.hljs-doctag { color: #82aaff !important; }
-.hljs-deletion { color: #f07178 !important; }
+.hljs-comment.hljs-doctag { color: var(--hl-title) !important; }
+.hljs-deletion { color: var(--hl-deletion) !important; }
 .hljs-emphasis { font-style: italic !important; }
 .hljs-strong { font-weight: 700 !important; }
 
@@ -504,12 +817,12 @@ img {
   height: 10px !important;
 }
 ::-webkit-scrollbar-thumb {
-  background: #c7ccd4 !important;
+  background: var(--border-strong) !important;
   border-radius: 6px !important;
   border: 2px solid var(--bg-page) !important;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #aab1bb !important;
+  background: var(--text-muted) !important;
 }
 
 /* ==========================================================================

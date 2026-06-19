@@ -5,6 +5,9 @@ import {
   readSettings,
   resetSettings,
   writeSettings,
+  readAppearancePrefs,
+  writeAppearance,
+  AppearancePrefs,
   ReviewerSettings,
 } from './settings';
 
@@ -244,6 +247,14 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
           );
           this.update();
           break;
+        case 'setAppearance':
+          // Appearance pickers apply live (the open Review Preview reacts to the
+          // config change), so persist immediately and refresh the panel.
+          await writeAppearance(
+            (message.prefs ?? {}) as Partial<AppearancePrefs>
+          );
+          this.update();
+          break;
         case 'resetSettings':
           await resetSettings();
           this.update();
@@ -252,6 +263,7 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
           this.view?.webview.postMessage({
             type: 'settingsReset',
             settings: readSettings(),
+            appearance: readAppearancePrefs(),
           });
           break;
         case 'ready':
@@ -290,6 +302,7 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
       files,
       activeLine: this.activeLine ?? null,
       settings: readSettings(),
+      appearance: readAppearancePrefs(),
     });
   }
 
@@ -592,6 +605,58 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
   .qr-row button:hover { opacity: 1; background: var(--vscode-toolbar-hoverBackground, rgba(128,128,128,0.18)); }
   .settings .row-actions { display: flex; gap: 8px; margin-top: 10px; }
   .settings .row-actions button.big { padding: 6px 8px; }
+  /* Appearance controls */
+  .appr-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 8px 0;
+  }
+  .appr-label {
+    flex: 0 0 58px;
+    font-size: 12px;
+    color: var(--vscode-descriptionForeground);
+  }
+  .seg {
+    display: inline-flex;
+    border: 1px solid var(--vscode-panel-border, rgba(128,128,128,0.35));
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .seg button {
+    background: transparent;
+    color: var(--vscode-foreground);
+    border: none;
+    border-left: 1px solid var(--vscode-panel-border, rgba(128,128,128,0.35));
+    padding: 4px 11px;
+    font-size: 11px;
+    font-family: inherit;
+    cursor: pointer;
+    opacity: 0.85;
+  }
+  .seg button:first-child { border-left: none; }
+  .seg button:hover { background: var(--vscode-toolbar-hoverBackground, rgba(128,128,128,0.18)); opacity: 1; }
+  .seg button.active {
+    background: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+    opacity: 1;
+  }
+  .swatches { display: inline-flex; gap: 8px; }
+  .swatch-btn {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    box-shadow: 0 0 0 1px var(--vscode-panel-border, rgba(128,128,128,0.4));
+    cursor: pointer;
+    padding: 0;
+    transition: transform 0.1s ease;
+  }
+  .swatch-btn:hover { transform: scale(1.12); }
+  .swatch-btn.active {
+    border-color: var(--vscode-sideBar-background, var(--vscode-editor-background));
+    box-shadow: 0 0 0 2px var(--vscode-focusBorder, #4daafc);
+  }
 </style>
 </head>
 <body>
@@ -627,6 +692,27 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
     </div>
   </div>
   <div id="settings" class="settings" hidden>
+    <h3>Appearance</h3>
+    <div class="appr-row">
+      <span class="appr-label">Language</span>
+      <div class="seg" id="apprLang">
+        <button data-val="auto" title="Follow VS Code's display language">Auto</button>
+        <button data-val="en">EN</button>
+        <button data-val="zh">中</button>
+      </div>
+    </div>
+    <div class="appr-row">
+      <span class="appr-label">Theme</span>
+      <div class="seg" id="apprTheme">
+        <button data-val="system" title="Follow the active VS Code color theme">System</button>
+        <button data-val="light">Light</button>
+        <button data-val="dark">Dark</button>
+      </div>
+    </div>
+    <div class="appr-row">
+      <span class="appr-label">Accent</span>
+      <div class="swatches" id="apprAccent"></div>
+    </div>
     <h3>Quick replies</h3>
     <div id="qrList"></div>
     <div class="row-actions">
@@ -664,9 +750,19 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
   const twisty = '<svg class="twisty" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M6 4l4 4-4 4V4z"/></svg>';
   const jumpIcon = '<svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M9 2v1.5h2.44L6 8.94 7.06 10 12.5 4.56V7H14V2H9zM12 13H3V4h4V2.5H3A1.5 1.5 0 0 0 1.5 4v9A1.5 1.5 0 0 0 3 14.5h9A1.5 1.5 0 0 0 13.5 13V9H12v4z"/></svg>';
 
-  let latest = { files: [], activeLine: null, settings: null };
+  let latest = { files: [], activeLine: null, settings: null, appearance: null };
   // Remembers the user's manual expand/collapse choices across re-renders.
   const openState = new Map();
+
+  // Appearance palette swatches (colours mirror the preview's accent palettes).
+  const APPR_ACCENTS = [
+    { id: 'oxblood', dot: '#8a2f3b', label: 'Oxblood (deep red)' },
+    { id: 'ink', dot: '#26262b', label: 'Graphite ink' },
+    { id: 'pine', dot: '#1f6f4f', label: 'Pine green' },
+    { id: 'terracotta', dot: '#b4502f', label: 'Terracotta' },
+    { id: 'petrol', dot: '#0e6e72', label: 'Petrol teal' },
+  ];
+  let appr = { language: 'auto', theme: 'system', accent: 'oxblood' };
 
   function esc(s) {
     return String(s)
@@ -787,7 +883,48 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
     qrList.appendChild(row);
   }
 
+  function setSeg(id, val) {
+    document.querySelectorAll('#' + id + ' button').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.val === val);
+    });
+  }
+
+  function renderAppearance() {
+    setSeg('apprLang', appr.language);
+    setSeg('apprTheme', appr.theme);
+    const wrap = document.getElementById('apprAccent');
+    wrap.innerHTML = '';
+    for (const a of APPR_ACCENTS) {
+      const b = document.createElement('button');
+      b.className = 'swatch-btn' + (a.id === appr.accent ? ' active' : '');
+      b.style.background = a.dot;
+      b.title = a.label;
+      b.addEventListener('click', () => setAppr('accent', a.id));
+      wrap.appendChild(b);
+    }
+  }
+
+  // Appearance changes apply live: persist to config and update the swatches.
+  function setAppr(key, val) {
+    appr = Object.assign({}, appr, { [key]: val });
+    renderAppearance();
+    vscode.postMessage({ type: 'setAppearance', prefs: { [key]: val } });
+  }
+
+  document.getElementById('apprLang').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-val]');
+    if (btn) { setAppr('language', btn.dataset.val); }
+  });
+  document.getElementById('apprTheme').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-val]');
+    if (btn) { setAppr('theme', btn.dataset.val); }
+  });
+
   function populateSettings() {
+    if (latest.appearance) {
+      appr = Object.assign({ language: 'auto', theme: 'system', accent: 'oxblood' }, latest.appearance);
+    }
+    renderAppearance();
     const s = latest.settings;
     if (!s) { return; }
     qrList.innerHTML = '';
@@ -845,6 +982,7 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
     const msg = event.data;
     if (msg && msg.type === 'settingsReset') {
       latest.settings = msg.settings || latest.settings;
+      latest.appearance = msg.appearance || latest.appearance;
       if (!settingsEl.hidden) {
         populateSettings();
       }
@@ -857,7 +995,13 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
         files: msg.files || [],
         activeLine: msg.activeLine === undefined ? null : msg.activeLine,
         settings: msg.settings || latest.settings,
+        appearance: msg.appearance || latest.appearance,
       };
+      // Keep the appearance pickers in sync if config changed elsewhere.
+      if (!settingsEl.hidden && latest.appearance) {
+        appr = Object.assign({ language: 'auto', theme: 'system', accent: 'oxblood' }, latest.appearance);
+        renderAppearance();
+      }
       if (latest.activeLine !== prevActive && latest.activeLine !== null) {
         // A newly-active thread always opens, even if previously collapsed.
         for (const file of latest.files) {

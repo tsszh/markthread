@@ -18,6 +18,7 @@ import {
   type ReviewThread as CopyThread,
 } from '../core';
 import type { HostAdapter, PreviewInitData, PreviewThread } from './hostAdapter';
+import { t, getLang, setLang, onLangChange, LANGS, type Lang } from './i18n';
 
 const STORE_PREFIX = 'mdr-comments:';
 const LAST_DOC_KEY = 'mdr-last-doc';
@@ -273,47 +274,68 @@ function showToast(message: string, kind: 'success' | 'error' | 'info' = 'info')
 const appbar = document.createElement('header');
 appbar.className = 'mdr-appbar';
 appbar.innerHTML =
-  '<div class="mdr-brand"><span class="mdr-logo" aria-hidden="true">✸</span>' +
+  '<div class="mdr-brand"><span class="mdr-logo" aria-hidden="true">' +
+  '<svg class="mdr-svg" viewBox="0 0 24 24" fill="none">' +
+  '<path d="M4 6.4A2.4 2.4 0 0 1 6.4 4h7.7a2.4 2.4 0 0 1 2.4 2.4v3.9a2.4 2.4 0 0 1-2.4 2.4H8.6L5.1 15.6A.55.55 0 0 1 4 15.2V6.4Z"/>' +
+  '<path d="M9.4 14.9h6.3l3.2 2.9a.55.55 0 0 0 1-.4v-7.2a2.4 2.4 0 0 0-1.7-2.3"/>' +
+  '</svg></span>' +
   '<span class="mdr-brand-name">MarkThread</span></div>' +
-  '<div class="mdr-vtabs" role="tablist" aria-label="View">' +
-  '<button type="button" class="mdr-vtab active" data-view="read" role="tab" aria-selected="true">Read</button>' +
-  '<button type="button" class="mdr-vtab" data-view="source" role="tab" aria-selected="false">Source</button>' +
+  '<div class="mdr-vtabs" role="tablist" data-i18n-al="viewTabs">' +
+  '<button type="button" class="mdr-vtab active" data-view="read" role="tab" aria-selected="true" data-i18n="read">Read</button>' +
+  '<button type="button" class="mdr-vtab" data-view="source" role="tab" aria-selected="false" data-i18n="source">Source</button>' +
   '</div>' +
   '<span class="mdr-spacer"></span>' +
   '<button type="button" class="mdr-appbtn" id="mdr-comments-toggle" aria-pressed="false">' +
-  '<span>Comments</span><span class="mdr-appbadge" id="mdr-comments-badge">0</span></button>' +
-  '<button type="button" class="mdr-appbtn primary mdr-desktop-only" id="mdr-share">Share review</button>' +
+  '<span data-i18n="comments">Comments</span><span class="mdr-appbadge" id="mdr-comments-badge">0</span></button>' +
+  '<button type="button" class="mdr-appbtn primary mdr-desktop-only" id="mdr-share" data-i18n="shareReview">Share review</button>' +
   '<div class="mdr-menuwrap">' +
-  '<button type="button" class="mdr-appbtn mdr-iconbtn" id="mdr-more" aria-haspopup="true" aria-expanded="false" aria-label="More actions">⋯</button>' +
+  '<button type="button" class="mdr-appbtn mdr-iconbtn" id="mdr-accent" aria-haspopup="true" aria-expanded="false" data-i18n-al="accentColor" data-i18n-title="accentColor">' +
+  '<svg class="mdr-svg" viewBox="0 0 24 24" fill="none"><path d="M12 3a9 9 0 1 0 0 18c.95 0 1.6-.78 1.6-1.66 0-.46-.18-.86-.48-1.16-.3-.3-.49-.7-.49-1.14 0-.9.74-1.62 1.65-1.62H16a5 5 0 0 0 5-5c0-3.87-4.03-7.42-9-7.42Z"/><circle cx="7.6" cy="11.2" r="1.1"/><circle cx="11" cy="7.6" r="1.1"/><circle cx="15.6" cy="8.6" r="1.1"/></svg>' +
+  '</button>' +
+  '<div class="mdr-menu mdr-accent-menu" id="mdr-accent-menu" role="menu" data-i18n-al="accentColor" hidden></div>' +
+  '</div>' +
+  '<button type="button" class="mdr-appbtn mdr-iconbtn" id="mdr-theme" data-i18n-title="toggleTheme">' +
+  '<svg class="mdr-svg mdr-theme-sun" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>' +
+  '<svg class="mdr-svg mdr-theme-moon" viewBox="0 0 24 24" fill="none"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.2 6.2 0 0 0 10.5 10.5Z"/></svg>' +
+  '<svg class="mdr-svg mdr-theme-system" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>' +
+  '</button>' +
+  '<button type="button" class="mdr-appbtn mdr-iconbtn mdr-langbtn" id="mdr-lang" data-i18n-al="switchLanguage" data-i18n-title="switchLanguage">' +
+  '<svg class="mdr-svg" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.9 5.8 3.9 9s-1.4 6.4-3.9 9c-2.5-2.6-3.9-5.8-3.9-9s1.4-6.4 3.9-9Z"/></svg>' +
+  '<span class="mdr-lang-code" id="mdr-lang-code">EN</span>' +
+  '</button>' +
+  '<div class="mdr-menuwrap">' +
+  '<button type="button" class="mdr-appbtn mdr-iconbtn" id="mdr-more" aria-haspopup="true" aria-expanded="false" data-i18n-al="moreActions">⋯</button>' +
   '<div class="mdr-menu" id="mdr-menu" role="menu" hidden>' +
-  '<button type="button" role="menuitem" data-act="sample">Load sample</button>' +
-  '<button type="button" role="menuitem" data-act="upload">Upload Markdown…</button>' +
+  '<button type="button" role="menuitem" data-act="sample" data-i18n="loadSample">Load sample</button>' +
+  '<button type="button" role="menuitem" data-act="upload" data-i18n="uploadMarkdown">Upload Markdown…</button>' +
   '<div class="mdr-menu-sep" role="separator"></div>' +
-  '<button type="button" role="menuitem" data-act="share" class="mdr-mobile-only">Share review</button>' +
-  '<button type="button" role="menuitem" data-act="export">Export comments</button>' +
-  '<button type="button" role="menuitem" data-act="import">Import comments</button>' +
+  '<button type="button" role="menuitem" data-act="share" class="mdr-mobile-only" data-i18n="shareReview">Share review</button>' +
+  '<button type="button" role="menuitem" data-act="export" data-i18n="exportComments">Export comments</button>' +
+  '<button type="button" role="menuitem" data-act="import" data-i18n="importComments">Import comments</button>' +
   '<div class="mdr-menu-sep" role="separator"></div>' +
-  '<button type="button" role="menuitem" data-act="clear" class="mdr-menu-danger">Clear all comments</button>' +
+  '<button type="button" role="menuitem" data-act="clear" class="mdr-menu-danger" data-i18n="clearAllComments">Clear all comments</button>' +
   '<div class="mdr-menu-sep" role="separator"></div>' +
-  '<button type="button" role="menuitem" data-act="settings">Settings…</button>' +
+  '<button type="button" role="menuitem" data-act="settings" data-i18n="settingsMenu">Settings…</button>' +
   '</div></div>' +
   '<input type="file" id="mdr-file" accept=".md,.markdown,text/markdown" hidden />' +
-  '<input type="file" id="mdr-import" accept="application/json,.json" hidden />';
+  '<input type="file" id="mdr-import" accept="application/json,.json" hidden />' +
+  '<div class="mdr-progress" aria-hidden="true"><div class="mdr-progress-fill" id="mdr-progress-fill"></div></div>';
 
 // --- Source (edit) view -----------------------------------------------------
 const sourceView = document.createElement('section');
 sourceView.className = 'mdr-source';
 sourceView.hidden = true;
-sourceView.setAttribute('aria-label', 'Markdown source');
+sourceView.setAttribute('aria-label', t('markdownSource'));
+sourceView.setAttribute('data-i18n-al', 'markdownSource');
 sourceView.innerHTML =
   '<div class="mdr-source-inner">' +
-  '<div class="mdr-source-head"><h2>Markdown source</h2>' +
+  '<div class="mdr-source-head"><h2 data-i18n="markdownSource">Markdown source</h2>' +
   '<div class="mdr-source-actions">' +
-  '<button type="button" class="mdr-btn" id="mdr-source-cancel">Cancel</button>' +
-  '<button type="button" class="mdr-btn primary" id="mdr-render">Render &amp; review</button>' +
+  '<button type="button" class="mdr-btn" id="mdr-source-cancel" data-i18n="cancel">Cancel</button>' +
+  '<button type="button" class="mdr-btn primary" id="mdr-render" data-i18n="renderReview">Render &amp; review</button>' +
   '</div></div>' +
   '<textarea class="mdr-source-textarea" id="mdr-textarea" spellcheck="false" ' +
-  'placeholder="Paste Markdown here, then Render &amp; review…"></textarea>' +
+  'data-i18n-ph="sourcePlaceholder"></textarea>' +
   '</div>';
 
 const readView = document.createElement('main');
@@ -437,9 +459,7 @@ function exportComments(): void {
   const count = controller ? controller.getThreads().length : 0;
   downloadReview();
   showToast(
-    count
-      ? `Exported ${count} comment thread${count > 1 ? 's' : ''}`
-      : 'Exported review (no comments yet)',
+    count ? t('exportedThreads', { n: count }) : t('exportedEmpty'),
     'success'
   );
 }
@@ -451,18 +471,16 @@ function clearReview(): void {
     ? controller.getThreads().length
     : loadThreads(docKey).length;
   if (count === 0) {
-    showToast('No comments to clear', 'info');
+    showToast(t('noCommentsToClear'), 'info');
     return;
   }
-  const ok = window.confirm(
-    `Clear all ${count} comment thread${count > 1 ? 's' : ''}? This cannot be undone.`
-  );
+  const ok = window.confirm(t('confirmClear', { n: count }));
   if (!ok) {
     return;
   }
   saveThreads(docKey, []);
   controller?.setData(adapter.init() as PreviewInitData);
-  showToast('Cleared all comments', 'success');
+  showToast(t('clearedAll'), 'success');
 }
 
 // Renders a single comment to plain text: an optional verdict tag + body.
@@ -514,7 +532,7 @@ async function shareReview(): Promise<void> {
   const text = shareText();
   try {
     await navigator.clipboard.writeText(text);
-    showToast('Review summary copied to clipboard', 'success');
+    showToast(t('copiedSummary'), 'success');
   } catch {
     const blob = new Blob([text], { type: 'text/plain' });
     const a = document.createElement('a');
@@ -522,7 +540,7 @@ async function shareReview(): Promise<void> {
     a.download = 'markthread-review.txt';
     a.click();
     URL.revokeObjectURL(a.href);
-    showToast('Clipboard unavailable — downloaded the review summary instead', 'info');
+    showToast(t('clipboardUnavailable'), 'info');
   }
 }
 
@@ -535,9 +553,9 @@ fileInput.addEventListener('change', () => {
   reader.onload = () => {
     textarea.value = String(reader.result ?? '');
     applyMarkdown(textarea.value);
-    showToast(`Loaded ${file.name}`, 'success');
+    showToast(t('loadedFile', { name: file.name }), 'success');
   };
-  reader.onerror = () => showToast('Could not read that file', 'error');
+  reader.onerror = () => showToast(t('couldNotRead'), 'error');
   reader.readAsText(file);
   fileInput.value = '';
 });
@@ -571,12 +589,12 @@ importInput.addEventListener('change', () => {
         });
       }
       setView('read');
-      showToast(`Imported ${threads.length} comment thread${threads.length === 1 ? '' : 's'}`, 'success');
+      showToast(t('importedThreads', { n: threads.length }), 'success');
     } catch {
-      showToast('That file is not a valid review export', 'error');
+      showToast(t('invalidExport'), 'error');
     }
   };
-  reader.onerror = () => showToast('Could not read that file', 'error');
+  reader.onerror = () => showToast(t('couldNotRead'), 'error');
   reader.readAsText(file);
   importInput.value = '';
 });
@@ -584,7 +602,7 @@ importInput.addEventListener('change', () => {
 function loadSample(): void {
   textarea.value = SAMPLE_DOC;
   applyMarkdown(SAMPLE_DOC);
-  showToast('Loaded the sample document', 'success');
+  showToast(t('loadedSample'), 'success');
 }
 
 // --- More menu --------------------------------------------------------------
@@ -650,26 +668,27 @@ modal.className = 'mdr-modal';
 modal.hidden = true;
 modal.setAttribute('role', 'dialog');
 modal.setAttribute('aria-modal', 'true');
-modal.setAttribute('aria-label', 'Review settings');
+modal.setAttribute('aria-label', t('reviewSettings'));
+modal.setAttribute('data-i18n-al', 'reviewSettings');
 modal.innerHTML =
   '<div class="mdr-modal-card">' +
-  '<div class="mdr-modal-head"><h2>Settings</h2>' +
-  '<button type="button" class="mdr-iconbtn" id="mdr-settings-close" aria-label="Close settings">✕</button></div>' +
-  '<div class="mdr-field"><span class="mdr-field-label">Quick reply pills</span>' +
+  '<div class="mdr-modal-head"><h2 data-i18n="settingsTitle">Settings</h2>' +
+  '<button type="button" class="mdr-iconbtn" id="mdr-settings-close" data-i18n-al="closeSettings">✕</button></div>' +
+  '<div class="mdr-field"><span class="mdr-field-label" data-i18n="quickReplyPills">Quick reply pills</span>' +
   '<div id="mdr-qr-list"></div>' +
-  '<button type="button" class="mdr-btn" id="mdr-qr-add">+ Add reply</button>' +
-  '<p class="mdr-hint">Shown as one-click verdict pills on every comment. Tone sets the colour and icon.</p></div>' +
-  '<div class="mdr-field"><span class="mdr-field-label">Share summary template</span>' +
-  '<textarea id="mdr-share-header" aria-label="Share summary header"></textarea>' +
-  '<label class="mdr-check"><input type="checkbox" id="mdr-inc-line" /> Include line number</label>' +
-  '<label class="mdr-check"><input type="checkbox" id="mdr-inc-text" /> Include line / selection text</label>' +
-  '<label class="mdr-check"><input type="checkbox" id="mdr-inc-comment" /> Include comment text</label>' +
-  '<p class="mdr-hint">Used by “Share review”, which copies a readable summary (not JSON) to the clipboard.</p></div>' +
+  '<button type="button" class="mdr-btn" id="mdr-qr-add" data-i18n="addReply">+ Add reply</button>' +
+  '<p class="mdr-hint" data-i18n="quickReplyHint">Shown as one-click verdict pills on every comment. Tone sets the colour and icon.</p></div>' +
+  '<div class="mdr-field"><span class="mdr-field-label" data-i18n="shareTemplate">Share summary template</span>' +
+  '<textarea id="mdr-share-header" data-i18n-al="shareHeaderAria"></textarea>' +
+  '<label class="mdr-check"><input type="checkbox" id="mdr-inc-line" /> <span data-i18n="includeLineNumber">Include line number</span></label>' +
+  '<label class="mdr-check"><input type="checkbox" id="mdr-inc-text" /> <span data-i18n="includeLineText">Include line / selection text</span></label>' +
+  '<label class="mdr-check"><input type="checkbox" id="mdr-inc-comment" /> <span data-i18n="includeComment">Include comment text</span></label>' +
+  '<p class="mdr-hint" data-i18n="shareHint">Used by Share review, which copies a readable summary (not JSON) to the clipboard.</p></div>' +
   '<div class="mdr-modal-actions">' +
-  '<button type="button" class="mdr-btn" id="mdr-settings-reset">Reset to defaults</button>' +
+  '<button type="button" class="mdr-btn" id="mdr-settings-reset" data-i18n="resetDefaults">Reset to defaults</button>' +
   '<span class="mdr-spacer"></span>' +
-  '<button type="button" class="mdr-btn" id="mdr-settings-cancel">Cancel</button>' +
-  '<button type="button" class="mdr-btn primary" id="mdr-settings-save">Save</button>' +
+  '<button type="button" class="mdr-btn" id="mdr-settings-cancel" data-i18n="cancel">Cancel</button>' +
+  '<button type="button" class="mdr-btn primary" id="mdr-settings-save" data-i18n="save">Save</button>' +
   '</div></div>';
 document.body.appendChild(modal);
 
@@ -681,9 +700,9 @@ function addQrRow(reply: QuickReply): void {
   const text = document.createElement('input');
   text.type = 'text';
   text.value = reply.label;
-  text.setAttribute('aria-label', 'Quick reply label');
+  text.setAttribute('aria-label', t('quickReplyLabelAria'));
   const select = document.createElement('select');
-  select.setAttribute('aria-label', 'Quick reply tone');
+  select.setAttribute('aria-label', t('quickReplyToneAria'));
   for (const tone of TONES) {
     const opt = document.createElement('option');
     opt.value = tone;
@@ -701,7 +720,7 @@ function addQrRow(reply: QuickReply): void {
     preview.innerHTML =
       `<span class="mdr-status-glyph" aria-hidden="true">${glyphForTone(
         tone
-      )}</span><span>${text.value || 'Label'}</span>`;
+      )}</span><span>${text.value || t('labelPlaceholder')}</span>`;
   };
   text.addEventListener('input', renderPreview);
   select.addEventListener('change', renderPreview);
@@ -709,7 +728,7 @@ function addQrRow(reply: QuickReply): void {
   const remove = document.createElement('button');
   remove.type = 'button';
   remove.className = 'mdr-iconbtn';
-  remove.setAttribute('aria-label', 'Remove quick reply');
+  remove.setAttribute('aria-label', t('removeQuickReply'));
   remove.textContent = '✕';
   remove.addEventListener('click', () => row.remove());
   row.append(text, select, preview, remove);
@@ -787,7 +806,7 @@ modal.addEventListener('click', (e) => {
     persistSettings();
     controller?.setStatuses(settings.quickReplies);
     closeSettings();
-    showToast('Settings saved', 'success');
+    showToast(t('settingsSaved'), 'success');
   }
 );
 
@@ -796,6 +815,209 @@ document.addEventListener('keydown', (e) => {
     closeSettings();
   }
 });
+
+// --- Theme toggle -----------------------------------------------------------
+// Cycles light <-> dark, persisted per browser. With no saved preference the
+// page follows the OS (prefers-color-scheme) via CSS, so the button reflects
+// and overrides that.
+const THEME_KEY = 'markthread.theme';
+const themeBtn = appbar.querySelector('#mdr-theme') as HTMLButtonElement;
+type ThemeMode = 'system' | 'light' | 'dark';
+const THEME_CYCLE: ThemeMode[] = ['system', 'light', 'dark'];
+let themeMode: ThemeMode = 'system';
+
+// `system` leaves data-theme unset so the OS prefers-color-scheme drives the
+// CSS; `light`/`dark` force it explicitly.
+function applyThemeMode(mode: ThemeMode): void {
+  themeMode = mode;
+  if (mode === 'system') {
+    document.documentElement.removeAttribute('data-theme');
+  } else {
+    document.documentElement.setAttribute('data-theme', mode);
+  }
+  if (themeBtn) {
+    themeBtn.dataset.mode = mode;
+    const label =
+      mode === 'system'
+        ? t('themeSystem')
+        : mode === 'light'
+          ? t('themeLight')
+          : t('themeDark');
+    themeBtn.setAttribute('aria-label', `${t('toggleTheme')} · ${label}`);
+  }
+}
+
+(function initTheme(): void {
+  let saved: string | null = null;
+  try {
+    saved = localStorage.getItem(THEME_KEY);
+  } catch {
+    /* ignore */
+  }
+  applyThemeMode(
+    saved === 'light' || saved === 'dark' || saved === 'system'
+      ? saved
+      : 'system'
+  );
+})();
+
+themeBtn?.addEventListener('click', () => {
+  const next = THEME_CYCLE[(THEME_CYCLE.indexOf(themeMode) + 1) % THEME_CYCLE.length];
+  applyThemeMode(next);
+  try {
+    localStorage.setItem(THEME_KEY, next);
+  } catch {
+    /* ignore */
+  }
+});
+
+// --- Accent palette picker --------------------------------------------------
+// The accent is orthogonal to light/dark and persisted per browser.
+const ACCENT_KEY = 'markthread.accent';
+const ACCENTS: { id: string; dot: string }[] = [
+  { id: 'oxblood', dot: '#8a2f3b' },
+  { id: 'ink', dot: '#26262b' },
+  { id: 'pine', dot: '#1f6f4f' },
+  { id: 'terracotta', dot: '#b4502f' },
+  { id: 'petrol', dot: '#0e6e72' },
+];
+const accentBtn = appbar.querySelector('#mdr-accent') as HTMLButtonElement;
+const accentMenu = appbar.querySelector('#mdr-accent-menu') as HTMLElement;
+let currentAccent = 'oxblood';
+
+function renderAccentMenu(): void {
+  accentMenu.innerHTML =
+    `<div class="mdr-menu-label">${t('accent')}</div>` +
+    ACCENTS.map(
+      (a) =>
+        `<button type="button" role="menuitemradio" data-accent="${a.id}" aria-checked="${String(
+          a.id === currentAccent
+        )}">` +
+        `<span class="mdr-swatch" style="background:${a.dot}"></span>${t(
+          'accent_' + a.id
+        )}</button>`
+    ).join('');
+}
+
+function applyAccent(id: string): void {
+  currentAccent = id;
+  document.documentElement.setAttribute('data-accent', id);
+  accentMenu
+    .querySelectorAll<HTMLElement>('[data-accent]')
+    .forEach((b) =>
+      b.setAttribute('aria-checked', String(b.dataset.accent === id))
+    );
+}
+
+renderAccentMenu();
+
+(function initAccent(): void {
+  let saved: string | null = null;
+  try {
+    saved = localStorage.getItem(ACCENT_KEY);
+  } catch {
+    /* ignore */
+  }
+  applyAccent(ACCENTS.some((a) => a.id === saved) ? (saved as string) : 'oxblood');
+})();
+
+function setAccentMenuOpen(open: boolean): void {
+  accentMenu.hidden = !open;
+  accentBtn.setAttribute('aria-expanded', String(open));
+}
+
+accentBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  setAccentMenuOpen(accentMenu.hidden);
+});
+accentMenu.addEventListener('click', (e) => {
+  const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-accent]');
+  if (!btn || !btn.dataset.accent) {
+    return;
+  }
+  applyAccent(btn.dataset.accent);
+  try {
+    localStorage.setItem(ACCENT_KEY, btn.dataset.accent);
+  } catch {
+    /* ignore */
+  }
+  setAccentMenuOpen(false);
+});
+document.addEventListener('click', () => setAccentMenuOpen(false));
+
+// --- Language switch --------------------------------------------------------
+// A compact globe button toggles EN <-> 简体中文. The active code shows in the
+// button; all chrome relabels in place (no reload) via data-i18n* attributes.
+const langBtn = appbar.querySelector('#mdr-lang') as HTMLButtonElement;
+const langCode = appbar.querySelector('#mdr-lang-code') as HTMLElement;
+
+function applyLangButton(): void {
+  const lang = getLang();
+  const meta = LANGS.find((l) => l.id === lang) ?? LANGS[0];
+  langCode.textContent = meta.short;
+  langBtn.setAttribute('aria-label', `${t('switchLanguage')} · ${meta.label}`);
+  langBtn.setAttribute('title', `${t('switchLanguage')} · ${meta.label}`);
+}
+
+langBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const next: Lang = getLang() === 'zh' ? 'en' : 'zh';
+  setLang(next);
+});
+
+// Relabel every element tagged with a data-i18n* attribute in the static chrome
+// (app bar, source view, settings modal), plus the dynamic/per-theme labels.
+function relabelUI(): void {
+  document.querySelectorAll<HTMLElement>('[data-i18n]').forEach((el) => {
+    el.textContent = t(el.dataset.i18n as string);
+  });
+  document.querySelectorAll<HTMLElement>('[data-i18n-ph]').forEach((el) => {
+    (el as HTMLInputElement | HTMLTextAreaElement).placeholder = t(
+      el.dataset.i18nPh as string
+    );
+  });
+  document.querySelectorAll<HTMLElement>('[data-i18n-al]').forEach((el) => {
+    el.setAttribute('aria-label', t(el.dataset.i18nAl as string));
+  });
+  document.querySelectorAll<HTMLElement>('[data-i18n-title]').forEach((el) => {
+    el.setAttribute('title', t(el.dataset.i18nTitle as string));
+  });
+  renderAccentMenu();
+  applyLangButton();
+  applyThemeMode(themeMode);
+}
+
+onLangChange(() => relabelUI());
+
+// --- Reading progress -------------------------------------------------------
+// Fills a hairline under the app bar as the document scrolls past. Reads the
+// document scroll position directly and writes a transform inside a rAF tick
+// (no React state, no per-frame layout thrash).
+const progressFill = appbar.querySelector('#mdr-progress-fill') as HTMLElement;
+let progressTicking = false;
+
+function updateProgress(): void {
+  const doc = document.documentElement;
+  const max = doc.scrollHeight - doc.clientHeight;
+  const ratio = max > 8 ? Math.min(1, Math.max(0, doc.scrollTop / max)) : 0;
+  progressFill.style.transform = `scaleX(${ratio})`;
+}
+
+window.addEventListener(
+  'scroll',
+  () => {
+    if (progressTicking) {
+      return;
+    }
+    progressTicking = true;
+    requestAnimationFrame(() => {
+      updateProgress();
+      progressTicking = false;
+    });
+  },
+  { passive: true }
+);
+window.addEventListener('resize', updateProgress, { passive: true });
 
 // --- Boot -------------------------------------------------------------------
 // Restore the last reviewed document (if any) so a refresh brings back both the
@@ -809,6 +1031,9 @@ try {
 if (!initialDoc) {
   initialDoc = SAMPLE_DOC;
 }
+document.documentElement.lang = getLang() === 'zh' ? 'zh-CN' : 'en';
+relabelUI();
 textarea.value = initialDoc;
 applyMarkdown(initialDoc);
 setView('read');
+requestAnimationFrame(updateProgress);

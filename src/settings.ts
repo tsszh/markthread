@@ -10,6 +10,86 @@ export interface ReviewerSettings extends FormatOptions {
 
 const SECTION = 'markThread';
 
+export type UiLang = 'en' | 'zh';
+export type UiTheme = 'light' | 'dark';
+
+/** Resolved appearance preferences sent to the preview webview. */
+export interface UiPrefs {
+  lang: UiLang;
+  theme: UiTheme;
+  accent: string;
+}
+
+const ACCENTS = ['oxblood', 'ink', 'pine', 'terracotta', 'petrol'];
+
+/** Raw (unresolved) appearance settings, as stored — used to populate the
+ *  side-panel settings form (shows `auto`/`system` rather than the resolved
+ *  value). */
+export interface AppearancePrefs {
+  language: string;
+  theme: string;
+  accent: string;
+}
+
+export function readAppearancePrefs(): AppearancePrefs {
+  const cfg = vscode.workspace.getConfiguration(SECTION);
+  return {
+    language: cfg.get<string>('appearance.language', 'auto'),
+    theme: cfg.get<string>('appearance.theme', 'system'),
+    accent: cfg.get<string>('appearance.accent', 'oxblood'),
+  };
+}
+
+export async function writeAppearance(
+  prefs: Partial<AppearancePrefs>
+): Promise<void> {
+  const cfg = vscode.workspace.getConfiguration(SECTION);
+  const target = vscode.ConfigurationTarget.Global;
+  if (prefs.language !== undefined) {
+    await cfg.update('appearance.language', prefs.language, target);
+  }
+  if (prefs.theme !== undefined) {
+    await cfg.update('appearance.theme', prefs.theme, target);
+  }
+  if (prefs.accent !== undefined) {
+    await cfg.update('appearance.accent', prefs.accent, target);
+  }
+}
+
+/**
+ * Resolves the user's appearance settings into concrete values for the webview:
+ * `auto` language follows VS Code's display language, and `system` theme follows
+ * the active color theme (re-resolve whenever either changes).
+ */
+export function resolveUiPrefs(): UiPrefs {
+  const cfg = vscode.workspace.getConfiguration(SECTION);
+
+  const langPref = cfg.get<string>('appearance.language', 'auto');
+  const lang: UiLang =
+    langPref === 'en' || langPref === 'zh'
+      ? langPref
+      : /^zh/i.test(vscode.env.language)
+        ? 'zh'
+        : 'en';
+
+  const themePref = cfg.get<string>('appearance.theme', 'system');
+  const kind = vscode.window.activeColorTheme.kind;
+  const systemDark =
+    kind === vscode.ColorThemeKind.Dark ||
+    kind === vscode.ColorThemeKind.HighContrast;
+  const theme: UiTheme =
+    themePref === 'light' || themePref === 'dark'
+      ? themePref
+      : systemDark
+        ? 'dark'
+        : 'light';
+
+  const accentPref = cfg.get<string>('appearance.accent', 'oxblood');
+  const accent = ACCENTS.includes(accentPref) ? accentPref : 'oxblood';
+
+  return { lang, theme, accent };
+}
+
 export function readSettings(): ReviewerSettings {
   const cfg = vscode.workspace.getConfiguration(SECTION);
   const quickReplies = cfg
@@ -65,6 +145,9 @@ const ALL_KEYS = [
   'copy.includeLineText',
   'copy.includeComment',
   'copy.headerTemplate',
+  'appearance.language',
+  'appearance.theme',
+  'appearance.accent',
 ];
 
 /** Clears every stored value so the package.json defaults apply again. */

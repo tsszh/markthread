@@ -2,7 +2,7 @@
   "name": "markthread",
   "displayName": "MarkThread",
   "description": "Review Markdown with humans, then send feedback back to agents.",
-  "version": "0.1.27",
+  "version": "0.1.29",
   "publisher": "local",
   "license": "MIT",
   "repository": {
@@ -404,6 +404,41 @@
           "editPresentation": "multilineText",
           "default": "# Review Comments\n\nPlease address the following review comments on the Markdown document below.\nEach item quotes the source line it refers to.\n\n---\n\n",
           "description": "Prefix (header/prompt) prepended to the copied review."
+        },
+        "markThread.appearance.language": {
+          "type": "string",
+          "enum": ["auto", "en", "zh"],
+          "enumDescriptions": [
+            "Follow VS Code's display language",
+            "English",
+            "简体中文 (Simplified Chinese)"
+          ],
+          "default": "auto",
+          "description": "Interface language for the Review Preview."
+        },
+        "markThread.appearance.theme": {
+          "type": "string",
+          "enum": ["system", "light", "dark"],
+          "enumDescriptions": [
+            "Follow the active VS Code color theme",
+            "Always light",
+            "Always dark"
+          ],
+          "default": "system",
+          "description": "Light/dark appearance of the Review Preview."
+        },
+        "markThread.appearance.accent": {
+          "type": "string",
+          "enum": ["oxblood", "ink", "pine", "terracotta", "petrol"],
+          "enumDescriptions": [
+            "Oxblood (deep red)",
+            "Graphite ink (near-monochrome)",
+            "Pine green",
+            "Terracotta",
+            "Petrol teal"
+          ],
+          "default": "oxblood",
+          "description": "Accent palette for the Review Preview."
         }
       }
     }

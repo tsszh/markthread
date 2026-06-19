@@ -148,3 +148,7 @@ dist/
 
 # Internal UI-audit working screenshots (not part of the published package)
 ui-audit-screenshots/
+
+# Local agent skills / tooling (not part of the extension)
+.agents/
+skills-lock.json

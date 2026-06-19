@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { MarkdownCommentController } from './comments';
 import { buildPanelModel } from './reviewPanel';
-import { readSettings } from './settings';
+import { readSettings, resolveUiPrefs } from './settings';
 import { StoredThread } from './storage';
 
 interface PreviewSelection {
@@ -165,6 +165,23 @@ export class ReviewPreviewPanel {
 
     // Keep the preview's comment view fresh when the gutter changes.
     this.controller.onDidChange(() => this.postUpdate());
+
+    // Re-apply appearance live when the user edits MarkThread settings, and
+    // when the VS Code color theme changes (relevant while theme is "system").
+    vscode.workspace.onDidChangeConfiguration(
+      (e) => {
+        if (e.affectsConfiguration('markThread')) {
+          this.postUpdate();
+        }
+      },
+      null,
+      this.disposables
+    );
+    vscode.window.onDidChangeActiveColorTheme(
+      () => this.postUpdate(),
+      null,
+      this.disposables
+    );
   }
 
   /** Switches the preview to a different document (reused single panel). */
@@ -310,6 +327,7 @@ export class ReviewPreviewPanel {
       quickReplies: readSettings().quickReplies,
       author: 'Reviewer',
       resourceBase: this.resourceBase(),
+      ui: resolveUiPrefs(),
     };
     this.panel.webview.postMessage({ type: 'update', data });
   }
@@ -345,8 +363,20 @@ export class ReviewPreviewPanel {
       `script-src 'nonce-${nonce}' 'unsafe-eval'`,
     ].join('; ');
 
+    // Resolve appearance up front so the document paints in the right
+    // language/theme/accent with no flash before the script runs.
+    const ui = resolveUiPrefs();
+    const htmlLang = ui.lang === 'zh' ? 'zh-CN' : 'en';
+    const initData = JSON.stringify({
+      markdown: '',
+      threads: [],
+      quickReplies: [],
+      author: 'Reviewer',
+      ui,
+    });
+
     return `<!DOCTYPE html>
-<html lang="en">
+<html lang="${htmlLang}" data-theme="${ui.theme}" data-accent="${ui.accent}">
 <head>
 <meta charset="UTF-8" />
 <meta http-equiv="Content-Security-Policy" content="${csp}" />
@@ -356,7 +386,7 @@ export class ReviewPreviewPanel {
 </head>
 <body class="markdown-body">
 <div id="mdr-preview"></div>
-<script nonce="${nonce}">window.__MDR_INIT__ = { markdown: '', threads: [], quickReplies: [], author: 'Reviewer' };</script>
+<script nonce="${nonce}">window.__MDR_INIT__ = ${initData};</script>
 <script nonce="${nonce}" src="${scriptUri}"></script>
 <script nonce="${nonce}" src="${tocUri}"></script>
 </body>
