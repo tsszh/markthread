@@ -376,7 +376,7 @@ export class ReviewPreviewPanel {
     });
 
     return `<!DOCTYPE html>
-<html lang="${htmlLang}" data-theme="${ui.theme}" data-accent="${ui.accent}">
+<html lang="${htmlLang}" data-theme="${ui.theme}" data-accent="${ui.accent}" data-width="${ui.pageWidth}">
 <head>
 <meta charset="UTF-8" />
 <meta http-equiv="Content-Security-Policy" content="${csp}" />

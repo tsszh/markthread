@@ -713,6 +713,15 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
       <span class="appr-label">Accent</span>
       <div class="swatches" id="apprAccent"></div>
     </div>
+    <div class="appr-row">
+      <span class="appr-label">Width</span>
+      <div class="seg" id="apprWidth">
+        <button data-val="narrow" title="Narrow reading measure">Narrow</button>
+        <button data-val="medium" title="Default width">Medium</button>
+        <button data-val="wide" title="Wider — more room for tables">Wide</button>
+        <button data-val="full" title="Use the full panel width">Full</button>
+      </div>
+    </div>
     <h3>Quick replies</h3>
     <div id="qrList"></div>
     <div class="row-actions">
@@ -762,7 +771,7 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
     { id: 'terracotta', dot: '#b4502f', label: 'Terracotta' },
     { id: 'petrol', dot: '#0e6e72', label: 'Petrol teal' },
   ];
-  let appr = { language: 'auto', theme: 'system', accent: 'oxblood' };
+  let appr = { language: 'auto', theme: 'system', accent: 'oxblood', pageWidth: 'medium' };
 
   function esc(s) {
     return String(s)
@@ -892,6 +901,7 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
   function renderAppearance() {
     setSeg('apprLang', appr.language);
     setSeg('apprTheme', appr.theme);
+    setSeg('apprWidth', appr.pageWidth);
     const wrap = document.getElementById('apprAccent');
     wrap.innerHTML = '';
     for (const a of APPR_ACCENTS) {
@@ -919,10 +929,14 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
     const btn = e.target.closest('button[data-val]');
     if (btn) { setAppr('theme', btn.dataset.val); }
   });
+  document.getElementById('apprWidth').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-val]');
+    if (btn) { setAppr('pageWidth', btn.dataset.val); }
+  });
 
   function populateSettings() {
     if (latest.appearance) {
-      appr = Object.assign({ language: 'auto', theme: 'system', accent: 'oxblood' }, latest.appearance);
+      appr = Object.assign({ language: 'auto', theme: 'system', accent: 'oxblood', pageWidth: 'medium' }, latest.appearance);
     }
     renderAppearance();
     const s = latest.settings;
@@ -999,7 +1013,7 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider {
       };
       // Keep the appearance pickers in sync if config changed elsewhere.
       if (!settingsEl.hidden && latest.appearance) {
-        appr = Object.assign({ language: 'auto', theme: 'system', accent: 'oxblood' }, latest.appearance);
+        appr = Object.assign({ language: 'auto', theme: 'system', accent: 'oxblood', pageWidth: 'medium' }, latest.appearance);
         renderAppearance();
       }
       if (latest.activeLine !== prevActive && latest.activeLine !== null) {

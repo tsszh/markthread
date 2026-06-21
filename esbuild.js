@@ -21,6 +21,13 @@ const extensionConfig = {
   logLevel: 'info',
 };
 
+// The rich showcase document is baked into the browser bundles so "Load rich
+// sample" works offline (file://) and inside the packaged VSIX, with no fetch.
+const richSample = readFileSync(
+  join(root, 'samples', 'rich-sample.md'),
+  'utf8'
+);
+
 /** Shared options for the browser bundles (preview client). */
 const browserBase = {
   bundle: true,
@@ -30,6 +37,9 @@ const browserBase = {
   sourcemap: !production,
   minify: production,
   logLevel: 'info',
+  define: {
+    __RICH_SAMPLE__: JSON.stringify(richSample),
+  },
 };
 
 /** @type {import('esbuild').BuildOptions} */

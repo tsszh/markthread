@@ -66,6 +66,7 @@ export interface PreviewInitData {
     lang?: 'en' | 'zh';
     theme?: 'light' | 'dark';
     accent?: string;
+    pageWidth?: 'narrow' | 'medium' | 'wide' | 'full';
   };
 }
 

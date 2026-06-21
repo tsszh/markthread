@@ -12,12 +12,16 @@ const SECTION = 'markThread';
 
 export type UiLang = 'en' | 'zh';
 export type UiTheme = 'light' | 'dark';
+export type UiWidth = 'narrow' | 'medium' | 'wide' | 'full';
+
+const PAGE_WIDTHS: UiWidth[] = ['narrow', 'medium', 'wide', 'full'];
 
 /** Resolved appearance preferences sent to the preview webview. */
 export interface UiPrefs {
   lang: UiLang;
   theme: UiTheme;
   accent: string;
+  pageWidth: UiWidth;
 }
 
 const ACCENTS = ['oxblood', 'ink', 'pine', 'terracotta', 'petrol'];
@@ -29,6 +33,7 @@ export interface AppearancePrefs {
   language: string;
   theme: string;
   accent: string;
+  pageWidth: string;
 }
 
 export function readAppearancePrefs(): AppearancePrefs {
@@ -37,6 +42,7 @@ export function readAppearancePrefs(): AppearancePrefs {
     language: cfg.get<string>('appearance.language', 'auto'),
     theme: cfg.get<string>('appearance.theme', 'system'),
     accent: cfg.get<string>('appearance.accent', 'oxblood'),
+    pageWidth: cfg.get<string>('appearance.pageWidth', 'medium'),
   };
 }
 
@@ -53,6 +59,9 @@ export async function writeAppearance(
   }
   if (prefs.accent !== undefined) {
     await cfg.update('appearance.accent', prefs.accent, target);
+  }
+  if (prefs.pageWidth !== undefined) {
+    await cfg.update('appearance.pageWidth', prefs.pageWidth, target);
   }
 }
 
@@ -87,7 +96,12 @@ export function resolveUiPrefs(): UiPrefs {
   const accentPref = cfg.get<string>('appearance.accent', 'oxblood');
   const accent = ACCENTS.includes(accentPref) ? accentPref : 'oxblood';
 
-  return { lang, theme, accent };
+  const widthPref = cfg.get<string>('appearance.pageWidth', 'medium');
+  const pageWidth: UiWidth = PAGE_WIDTHS.includes(widthPref as UiWidth)
+    ? (widthPref as UiWidth)
+    : 'medium';
+
+  return { lang, theme, accent, pageWidth };
 }
 
 export function readSettings(): ReviewerSettings {
@@ -148,6 +162,7 @@ const ALL_KEYS = [
   'appearance.language',
   'appearance.theme',
   'appearance.accent',
+  'appearance.pageWidth',
 ];
 
 /** Clears every stored value so the package.json defaults apply again. */

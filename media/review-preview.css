@@ -99,6 +99,37 @@ body.mdr-app {
   background: var(--bg-page, #f7f8fa) !important;
 }
 
+/* --------------------------------------------------------------------------
+   Page width presets
+
+   A single appearance knob shared by the standalone app and the VS Code
+   preview. The chosen width is exposed as the `data-width` attribute on the
+   <html> element (like data-theme / data-accent) so switching it is instant.
+   `--mdr-page-max` then caps the reading surface: the document "sheet" in the
+   standalone app (`#mdr-preview`) and the body measure in the VS Code webview.
+   -------------------------------------------------------------------------- */
+:root {
+  --mdr-page-max: min(48rem, 92%);
+}
+html[data-width='narrow'] {
+  --mdr-page-max: min(40rem, 92%);
+}
+html[data-width='medium'] {
+  --mdr-page-max: min(48rem, 92%);
+}
+html[data-width='wide'] {
+  --mdr-page-max: min(64rem, 96%);
+}
+html[data-width='full'] {
+  --mdr-page-max: none;
+}
+
+/* VS Code webview: widen/narrow the centered reading measure. The standalone
+   app drives its own sheet via `#mdr-preview` below, so exclude it here. */
+body.markdown-body:not(.mdr-app) {
+  max-width: var(--mdr-page-max, min(48rem, 92%)) !important;
+}
+
 .mdr-appbar {
   position: sticky;
   top: 0;
@@ -313,6 +344,29 @@ body.mdr-app {
   letter-spacing: 0.02em;
 }
 
+/* Icon buttons that also carry a short text code (language, page width) size to
+   their content instead of the fixed 36px icon-only width. The triple-class
+   selector outranks `.mdr-appbtn.mdr-iconbtn` so the text is never clipped. */
+.mdr-appbtn.mdr-iconbtn.mdr-langbtn,
+.mdr-appbtn.mdr-iconbtn.mdr-widthbtn {
+  width: auto;
+  min-width: 36px;
+  padding: 0 10px;
+  gap: 5px;
+  font-size: 13px;
+}
+.mdr-appbtn.mdr-iconbtn.mdr-langbtn .mdr-svg,
+.mdr-appbtn.mdr-iconbtn.mdr-widthbtn .mdr-svg {
+  width: 16px;
+  height: 16px;
+}
+.mdr-width-code {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1;
+}
+
 /* Theme toggle: cycles system -> light -> dark and shows the current mode's
    icon (driven by the button's data-mode). */
 .mdr-theme-sun,
@@ -350,6 +404,8 @@ body.mdr-app {
 /* More menu */
 .mdr-menuwrap {
   position: relative;
+  display: inline-flex;
+  align-items: center;
 }
 .mdr-menu {
   position: absolute;
@@ -434,6 +490,58 @@ body.mdr-app {
 }
 
 /* --------------------------------------------------------------------------
+   Clipboard (plain-text) preview view
+   -------------------------------------------------------------------------- */
+.mdr-clip-inner {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 28px 80px;
+}
+.mdr-clip-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.mdr-clip-head > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.mdr-clip-head h2 {
+  font-size: 16px !important;
+  margin: 0 !important;
+  border: none !important;
+  padding: 0 !important;
+}
+.mdr-clip-hint {
+  margin: 4px 0 0 !important;
+  font-size: 12.5px;
+  color: var(--text-muted, #6b7480);
+}
+.mdr-clip-head .mdr-btn {
+  flex: 0 0 auto;
+}
+.mdr-clip-pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  border: 1px solid var(--border-strong, #d4d9e0);
+  border-radius: 10px;
+  padding: 16px 18px;
+  background: var(--bg-card, #fff);
+  color: var(--text-body, #2b3340);
+  min-height: 50vh;
+  overflow: auto;
+}
+.mdr-clip-pre.empty {
+  color: var(--text-muted, #6b7480);
+  font-style: italic;
+}
+
+/* --------------------------------------------------------------------------
    Reading column (standalone only; webview keeps its own layout).
    Like the VS Code plugin, the content grows with the window width (no fixed
    max-width cap); the side gutters grow with the viewport so the left margin
@@ -455,7 +563,7 @@ body.mdr-app #mdr-preview {
   --gutter: clamp(1.8rem, 3vw, 3rem);
   position: relative;
   width: 100%;
-  max-width: 47rem;
+  max-width: var(--mdr-page-max, min(48rem, 92%));
   min-width: 0;
   margin: 0 auto;
   background: var(--bg-card, #fff);
@@ -1019,6 +1127,224 @@ body.mdr-app #mdr-preview pre:not(.mermaid) {
 }
 
 /* --------------------------------------------------------------------------
+   Rich tables (scroll / sort / filter / resize)
+   A non-destructive upgrade of Markdown tables: the native <table> structure
+   is kept (so per-cell comments still work) and wrapped in a scroll container
+   with a toolbar; columns/rows are drag-resizable and headers are sortable.
+   -------------------------------------------------------------------------- */
+#mdr-preview .mdr-table-block {
+  margin: 1.6rem 0;
+  border: 1px solid var(--border, #e4e7ec);
+  border-radius: var(--radius-lg, 12px);
+  background: var(--bg-card, #fff);
+  box-shadow: var(--shadow-card, 0 1px 2px rgba(16, 24, 40, 0.05));
+  overflow: hidden;
+}
+#mdr-preview .mdr-table-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border, #e4e7ec);
+  background: var(--bg-subtle, #f7f8fa);
+}
+#mdr-preview .mdr-tbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 9px;
+  border: 1px solid var(--border-strong, #d4d9e0);
+  border-radius: 7px;
+  background: var(--bg-card, #fff);
+  color: var(--text-body, #3a414d);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+#mdr-preview .mdr-tbtn:hover {
+  border-color: var(--accent, #3b6fe0);
+  color: var(--accent-strong, #2f5bd0);
+}
+#mdr-preview .mdr-tbtn.active {
+  background: var(--accent-soft, #eaf0fd);
+  border-color: var(--accent, #3b6fe0);
+  color: var(--accent-strong, #2f5bd0);
+}
+#mdr-preview .mdr-tbtn svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+#mdr-preview .mdr-table-info {
+  margin-left: auto;
+  font-size: 11.5px;
+  color: var(--text-muted, #6b7480);
+  white-space: nowrap;
+}
+#mdr-preview .mdr-col-menuwrap {
+  position: relative;
+  display: inline-flex;
+}
+#mdr-preview .mdr-col-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 30;
+  min-width: 168px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 5px;
+  border: 1px solid var(--border-strong, #d4d9e0);
+  border-radius: 9px;
+  background: var(--bg-card, #fff);
+  box-shadow: 0 8px 24px rgba(16, 24, 40, 0.16);
+}
+#mdr-preview .mdr-col-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  color: var(--text-body, #3a414d);
+  cursor: pointer;
+}
+#mdr-preview .mdr-col-menu-item:hover {
+  background: var(--bg-subtle, #f7f8fa);
+}
+#mdr-preview .mdr-col-menu-item input {
+  accent-color: var(--accent, #3b6fe0);
+  cursor: pointer;
+}
+#mdr-preview .mdr-table-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* The enhanced table fills the scroll container and no longer carries its own
+   chrome (the block wrapper provides border/radius/shadow). Inline `width`,
+   `table-layout`, `display`, `max-width` and `margin` are set with !important
+   from JS so they win over the base stylesheet. */
+#mdr-preview table.mdr-rich-table {
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: var(--bg-card, #fff) !important;
+  /* Fill the scroll container when the columns are narrower than it; grow past
+     it (and scroll) when they're wider. */
+  min-width: 100%;
+}
+#mdr-preview table.mdr-rich-table th,
+#mdr-preview table.mdr-rich-table td {
+  position: relative;
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+#mdr-preview table.mdr-rich-table thead th.mdr-th {
+  cursor: pointer;
+  user-select: none;
+  padding-right: 22px !important;
+}
+#mdr-preview table.mdr-rich-table thead th.mdr-th:hover {
+  background: var(--bg-hover, #eef1f6) !important;
+}
+.mdr-th-label {
+  display: inline;
+}
+.mdr-sort-ind {
+  position: absolute;
+  right: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  color: var(--accent-strong, #2f5bd0);
+  pointer-events: none;
+}
+
+/* Column resize grip: a thin hot-zone on the right edge of each header cell. */
+.mdr-col-resizer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 8px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 5;
+  touch-action: none;
+}
+.mdr-col-resizer::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  right: 3px;
+  width: 2px;
+  border-radius: 2px;
+  background: transparent;
+}
+.mdr-col-resizer:hover::after,
+body.mdr-col-resizing .mdr-col-resizer::after {
+  background: var(--accent, #3b6fe0);
+}
+
+/* Row resize grip: a thin hot-zone along the bottom of the first cell. */
+.mdr-row-resizer {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 7px;
+  cursor: row-resize;
+  z-index: 4;
+  touch-action: none;
+}
+.mdr-row-resizer:hover {
+  background: var(--accent-soft, #eaf0fd);
+}
+body.mdr-col-resizing,
+body.mdr-row-resizing {
+  user-select: none;
+  cursor: col-resize;
+}
+body.mdr-row-resizing {
+  cursor: row-resize;
+}
+
+/* Per-column filter row, toggled from the toolbar. */
+#mdr-preview table.mdr-rich-table tr.mdr-filter-row th.mdr-filter-cell {
+  padding: 4px 6px !important;
+  background: var(--bg-card, #fff) !important;
+  border-bottom: 1px solid var(--border-strong, #d4d9e0) !important;
+  white-space: nowrap !important;
+}
+.mdr-filter-input {
+  width: 100%;
+  box-sizing: border-box;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--border-strong, #d4d9e0);
+  border-radius: 6px;
+  background: var(--bg-subtle, #f7f8fa);
+  color: var(--text-body, #3a414d);
+  font: inherit;
+  font-size: 12px;
+}
+.mdr-filter-input:focus {
+  outline: none;
+  border-color: var(--accent, #3b6fe0);
+  background: var(--bg-card, #fff);
+}
+tr.mdr-filter-row.mdr-hidden {
+  display: none;
+}
+
+/* --------------------------------------------------------------------------
    Settings modal (configurable quick replies + share template)
    -------------------------------------------------------------------------- */
 .mdr-modal {
@@ -1092,6 +1418,17 @@ body.mdr-app #mdr-preview pre:not(.mermaid) {
 }
 .mdr-qr-preview {
   flex: 0 0 auto;
+}
+.mdr-select {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--border-strong, #d4d9e0);
+  border-radius: 7px;
+  padding: 8px 9px;
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--bg-card, #fff);
+  color: var(--text-body, #2b3340);
 }
 .mdr-modal textarea {
   width: 100%;

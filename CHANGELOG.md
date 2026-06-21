@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.1.32
+
+- **Toolbar polish (standalone web app).** Aligned the app-bar icon buttons consistently (the "more actions" affordance is now a real three-dot icon and icon/text buttons no longer clip), so the quick-action cluster lines up.
+- **Clearer page-width control.** Replaced the page-width button's cramped glyph with a clean horizontal double-arrow and added a live text label of the current width (Narrow / Medium / Wide / Full · 窄 / 中 / 宽 / 全宽).
+- **Better "follow system" theme icon.** The system/auto theme mode now uses the conventional half-filled contrast circle instead of a monitor glyph.
+- **New Clipboard preview tab.** A third view (Read / Source / **Clipboard**) shows the exact plain text that "Share review" copies to the clipboard, with a one-click Copy button — so reviewers can see what will be shared before sending it. It stays live as comments and the language change.
+
+## 0.1.31
+
+- **Page width is now a live appearance toggle.** Switching the rendered document width is as instant as changing the theme — no Save step. The standalone web app gets a dedicated width button in the toolbar (next to the theme toggle) that cycles Narrow → Medium → Wide → Full. The VS Code preview reads a new `markThread.appearance.pageWidth` setting and reacts live, and the MarkThread side panel's **Appearance** section gained a matching Narrow / Medium / Wide / Full segmented control. All three surfaces drive the same width and reflect changes on the window immediately.
+
+## 0.1.30
+
+- **Rich, interactive tables.** Markdown tables are now upgraded in place into interactive grids without losing their native structure (so per-cell comments keep working). Wide tables that exceed the page width get their own horizontal scroll instead of overflowing the document. Each table gains a toolbar with **sort** (click a header to cycle ascending → descending → original), a per-column **filter** row (funnel toggle) with a live row count, **Auto-fit** (one click fits every column to its content; double-click a column's resize grip to fit just that one), a **Columns** menu to **show/hide** individual columns, and **Reset**. Columns are drag-resizable from their right edge and rows from the bottom edge of the first cell. Comment markers stay anchored to their cell across sorting/filtering via a stable per-row identity.
+- **Load rich sample.** The standalone web app's "⋯" menu gained a **Load rich sample** action that loads the full component showcase (`samples/rich-sample.md`, including the oversized table), baked into the bundle so it works offline.
+- **Configurable page width.** The standalone Settings dialog has a new **Page width** option (Narrow / Medium / Wide / Full width) so the rendered document can be widened to fit large tables or narrowed for easier reading. The choice is persisted per browser.
+
 ## 0.1.29
 
 - Added an **Appearance** section to the MarkThread side panel's settings (the gear button), so the preview's language, theme, and accent can be changed without opening VS Code settings. Language and theme use compact segmented controls (Auto / EN / 中 and System / Light / Dark), and the accent is a row of live colour swatches. Choices apply instantly — they write the same `markThread.appearance.*` settings, and any open Review Preview updates live.

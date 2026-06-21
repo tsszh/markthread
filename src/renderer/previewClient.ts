@@ -7,6 +7,7 @@ import mermaid from 'mermaid';
 import * as echarts from 'echarts';
 import { Chart, registerables } from 'chart.js';
 import { renderMarkdown } from './markdownRenderer';
+import { enhanceTables } from './tableEnhancer';
 import { obsidianChartToChartJs, parseEchartsOption } from './charts';
 import {
   DEFAULT_QUICK_REPLIES_RICH,
@@ -234,7 +235,15 @@ export function mountPreview(
       return null;
     }
     const table = findTable(thread.line);
-    const row = table?.rows[thread.cell.row];
+    if (!table) {
+      return null;
+    }
+    // Prefer the stable, sort/filter-proof row identity stamped by the table
+    // enhancer; fall back to the live DOM index for un-enhanced tables.
+    const row =
+      table.querySelector<HTMLTableRowElement>(
+        `tr[data-mdr-row="${thread.cell.row}"]`
+      ) ?? table.rows[thread.cell.row];
     return (row?.cells[thread.cell.col] as HTMLElement) ?? null;
   }
 
@@ -1039,10 +1048,17 @@ export function mountPreview(
       return null;
     }
     const tr = cell.parentElement as HTMLTableRowElement;
+    // The enhancer's per-column filter row isn't part of the author's data.
+    if (tr.classList.contains('mdr-filter-row')) {
+      return null;
+    }
+    // Anchor to the stable row identity (survives sorting/filtering) when the
+    // table has been enhanced; otherwise the live DOM index.
+    const stableRow = tr.getAttribute('data-mdr-row');
     return {
       el: cell,
       line: Number(table.getAttribute('data-source-line')),
-      row: tr.rowIndex,
+      row: stableRow !== null ? Number(stableRow) : tr.rowIndex,
       col: cell.cellIndex,
     };
   }
@@ -1595,6 +1611,14 @@ export function mountPreview(
     contentEl.innerHTML = html;
     resolveResourceUrls(contentEl);
     resolveResourceUrls(propsEl);
+
+    // Upgrade Markdown tables to interactive grids (scroll/sort/filter/resize).
+    // Reposition any open comment popup when a sort/filter/resize moves cells.
+    enhanceTables(contentEl, () => {
+      if (popEl.style.display !== 'none' && popAnchor) {
+        positionPopup(popAnchor);
+      }
+    });
 
     renderCharts();
     loaded = true;

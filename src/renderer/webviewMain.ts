@@ -23,6 +23,9 @@ function applyUi(ui: PreviewInitData['ui']): void {
   if (ui.accent) {
     root.setAttribute('data-accent', ui.accent);
   }
+  if (ui.pageWidth) {
+    root.setAttribute('data-width', ui.pageWidth);
+  }
   if (ui.lang) {
     root.lang = ui.lang === 'zh' ? 'zh-CN' : 'en';
     setLang(ui.lang);

@@ -19,6 +19,7 @@ const M: Record<string, Record<Lang, Entry>> = {
   // App bar
   read: { en: 'Read', zh: '阅读' },
   source: { en: 'Source', zh: '源码' },
+  clipboardView: { en: 'Clipboard', zh: '复制预览' },
   viewTabs: { en: 'View', zh: '视图' },
   comments: { en: 'Comments', zh: '评论' },
   shareReview: { en: 'Share review', zh: '分享评审' },
@@ -32,6 +33,7 @@ const M: Record<string, Record<Lang, Entry>> = {
 
   // More menu
   loadSample: { en: 'Load sample', zh: '加载示例' },
+  loadRichSample: { en: 'Load rich sample', zh: '加载完整示例' },
   uploadMarkdown: { en: 'Upload Markdown…', zh: '上传 Markdown…' },
   exportComments: { en: 'Export comments', zh: '导出评论' },
   importComments: { en: 'Import comments', zh: '导入评论' },
@@ -47,6 +49,18 @@ const M: Record<string, Record<Lang, Entry>> = {
     zh: '在此粘贴 Markdown，然后点击"渲染并评审"…',
   },
 
+  // Clipboard (plain-text) view
+  clipboardTitle: { en: 'Clipboard preview', zh: '复制预览' },
+  clipboardHint: {
+    en: 'This is exactly the plain text "Share review" copies to your clipboard.',
+    zh: '这正是"分享评审"复制到剪贴板的纯文本内容。',
+  },
+  clipboardEmpty: {
+    en: 'No comments yet — add a review comment to preview what would be copied.',
+    zh: '暂无评论 —— 添加评审评论后即可预览将要复制的内容。',
+  },
+  copyToClipboard: { en: 'Copy to clipboard', zh: '复制到剪贴板' },
+
   // Settings modal
   settingsTitle: { en: 'Settings', zh: '设置' },
   reviewSettings: { en: 'Review settings', zh: '评审设置' },
@@ -56,6 +70,15 @@ const M: Record<string, Record<Lang, Entry>> = {
   quickReplyHint: {
     en: 'Shown as one-click verdict pills on every comment. Tone sets the colour and icon.',
     zh: '在每条评论上作为一键评定标签显示。色调决定颜色与图标。',
+  },
+  pageWidthLabel: { en: 'Page width', zh: '页面宽度' },
+  pageWidthNarrow: { en: 'Narrow', zh: '窄' },
+  pageWidthMedium: { en: 'Medium', zh: '中' },
+  pageWidthWide: { en: 'Wide', zh: '宽' },
+  pageWidthFull: { en: 'Full', zh: '全宽' },
+  pageWidthHint: {
+    en: 'Sets how wide the rendered document is. Wider fits big tables; narrower is easier to read.',
+    zh: '设置文档渲染宽度。更宽适合大表格，更窄更易阅读。',
   },
   shareTemplate: { en: 'Share summary template', zh: '分享摘要模板' },
   shareHeaderAria: { en: 'Share summary header', zh: '分享摘要标题' },
@@ -100,6 +123,14 @@ const M: Record<string, Record<Lang, Entry>> = {
     zh: '该文件不是有效的评审导出文件',
   },
   loadedSample: { en: 'Loaded the sample document', zh: '已加载示例文档' },
+  loadedRichSample: {
+    en: 'Loaded the rich sample document',
+    zh: '已加载完整示例文档',
+  },
+  richSampleUnavailable: {
+    en: 'Rich sample is unavailable in this build',
+    zh: '此版本中没有可用的完整示例',
+  },
   copiedSummary: {
     en: 'Review summary copied to clipboard',
     zh: '评审摘要已复制到剪贴板',
@@ -163,6 +194,29 @@ const M: Record<string, Record<Lang, Entry>> = {
   commentOnLine: { en: 'Comment on this line', zh: '评论该行' },
   addCommentCell: { en: 'Add a comment on this cell', zh: '在该单元格添加评论' },
   commentOnCell: { en: 'Comment on this cell', zh: '评论该单元格' },
+
+  // Rich tables
+  tableFilter: { en: 'Filter', zh: '筛选' },
+  tableReset: { en: 'Reset', zh: '重置' },
+  tableAutofit: { en: 'Auto-fit', zh: '自适应列宽' },
+  tableAutofitHint: {
+    en: 'Drag to resize · double-click to auto-fit',
+    zh: '拖动调整列宽 · 双击自适应',
+  },
+  tableColumns: { en: 'Columns', zh: '列' },
+  tableFilterPlaceholder: { en: 'Filter…', zh: '筛选…' },
+  tableFilterColumn: {
+    en: (p) => `Filter column ${p.n}`,
+    zh: (p) => `筛选第 ${p.n} 列`,
+  },
+  tableRowCount: {
+    en: (p) => `${p.n} row${p.n === 1 ? '' : 's'}`,
+    zh: (p) => `${p.n} 行`,
+  },
+  tableRowFiltered: {
+    en: (p) => `${p.shown} / ${p.total} rows`,
+    zh: (p) => `${p.shown} / ${p.total} 行`,
+  },
 
   // Properties / panel
   properties: { en: 'Properties', zh: '属性' },

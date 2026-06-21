@@ -2,7 +2,7 @@
   "name": "markthread",
   "displayName": "MarkThread",
   "description": "Review Markdown with humans, then send feedback back to agents.",
-  "version": "0.1.29",
+  "version": "0.1.32",
   "publisher": "local",
   "license": "MIT",
   "repository": {
@@ -439,6 +439,18 @@
           ],
           "default": "oxblood",
           "description": "Accent palette for the Review Preview."
+        },
+        "markThread.appearance.pageWidth": {
+          "type": "string",
+          "enum": ["narrow", "medium", "wide", "full"],
+          "enumDescriptions": [
+            "Narrow (~40rem) — easiest reading measure",
+            "Medium (~48rem) — default",
+            "Wide (~64rem) — more room for tables",
+            "Full width — use the whole panel"
+          ],
+          "default": "medium",
+          "description": "Width of the rendered document in the Review Preview. Wider fits big tables; narrower is easier to read."
         }
       }
     }

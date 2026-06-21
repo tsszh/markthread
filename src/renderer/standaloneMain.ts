@@ -23,6 +23,12 @@ import { t, getLang, setLang, onLangChange, LANGS, type Lang } from './i18n';
 const STORE_PREFIX = 'mdr-comments:';
 const LAST_DOC_KEY = 'mdr-last-doc';
 
+// The full component showcase (samples/rich-sample.md) is baked into the bundle
+// at build time (see esbuild.js) so "Load rich sample" works offline.
+declare const __RICH_SAMPLE__: string;
+const RICH_SAMPLE_DOC: string =
+  typeof __RICH_SAMPLE__ === 'string' ? __RICH_SAMPLE__ : '';
+
 // A showcase document covering every supported component (frontmatter, tables,
 // task lists, quotes, alerts/callouts, code, and all three chart kinds). Loaded
 // by "Load sample" and on a first visit with no saved document. Built from an
@@ -170,12 +176,16 @@ const TONES: StatusTone[] = ['green', 'red', 'amber', 'blue', 'neutral'];
 
 // Web-app review settings, mirroring the VS Code extension's configurable quick
 // replies + copy template. Persisted in localStorage (per browser).
+type PageWidth = 'narrow' | 'medium' | 'wide' | 'full';
+const PAGE_WIDTHS: PageWidth[] = ['narrow', 'medium', 'wide', 'full'];
+
 interface WebSettings {
   quickReplies: QuickReply[];
   shareHeader: string;
   includeLineNumber: boolean;
   includeLineText: boolean;
   includeComment: boolean;
+  pageWidth: PageWidth;
 }
 
 function defaultSettings(): WebSettings {
@@ -185,6 +195,7 @@ function defaultSettings(): WebSettings {
     includeLineNumber: true,
     includeLineText: true,
     includeComment: true,
+    pageWidth: 'medium',
   };
 }
 
@@ -215,6 +226,9 @@ function loadSettings(): WebSettings {
       includeLineNumber: parsed.includeLineNumber ?? fallback.includeLineNumber,
       includeLineText: parsed.includeLineText ?? fallback.includeLineText,
       includeComment: parsed.includeComment ?? fallback.includeComment,
+      pageWidth: PAGE_WIDTHS.includes(parsed.pageWidth as PageWidth)
+        ? (parsed.pageWidth as PageWidth)
+        : fallback.pageWidth,
     };
   } catch {
     return fallback;
@@ -283,6 +297,7 @@ appbar.innerHTML =
   '<div class="mdr-vtabs" role="tablist" data-i18n-al="viewTabs">' +
   '<button type="button" class="mdr-vtab active" data-view="read" role="tab" aria-selected="true" data-i18n="read">Read</button>' +
   '<button type="button" class="mdr-vtab" data-view="source" role="tab" aria-selected="false" data-i18n="source">Source</button>' +
+  '<button type="button" class="mdr-vtab" data-view="clip" role="tab" aria-selected="false" data-i18n="clipboardView">Clipboard</button>' +
   '</div>' +
   '<span class="mdr-spacer"></span>' +
   '<button type="button" class="mdr-appbtn" id="mdr-comments-toggle" aria-pressed="false">' +
@@ -297,16 +312,23 @@ appbar.innerHTML =
   '<button type="button" class="mdr-appbtn mdr-iconbtn" id="mdr-theme" data-i18n-title="toggleTheme">' +
   '<svg class="mdr-svg mdr-theme-sun" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>' +
   '<svg class="mdr-svg mdr-theme-moon" viewBox="0 0 24 24" fill="none"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.2 6.2 0 0 0 10.5 10.5Z"/></svg>' +
-  '<svg class="mdr-svg mdr-theme-system" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>' +
+  '<svg class="mdr-svg mdr-theme-system" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor" stroke="none"/></svg>' +
+  '</button>' +
+  '<button type="button" class="mdr-appbtn mdr-iconbtn mdr-widthbtn" id="mdr-width" data-i18n-al="pageWidthLabel" data-i18n-title="pageWidthLabel">' +
+  '<svg class="mdr-svg" viewBox="0 0 24 24" fill="none"><path d="M3 12h18M3 12l3.5-3.5M3 12l3.5 3.5M21 12l-3.5-3.5M21 12l-3.5 3.5"/></svg>' +
+  '<span class="mdr-width-code" id="mdr-width-code">M</span>' +
   '</button>' +
   '<button type="button" class="mdr-appbtn mdr-iconbtn mdr-langbtn" id="mdr-lang" data-i18n-al="switchLanguage" data-i18n-title="switchLanguage">' +
   '<svg class="mdr-svg" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.9 5.8 3.9 9s-1.4 6.4-3.9 9c-2.5-2.6-3.9-5.8-3.9-9s1.4-6.4 3.9-9Z"/></svg>' +
   '<span class="mdr-lang-code" id="mdr-lang-code">EN</span>' +
   '</button>' +
   '<div class="mdr-menuwrap">' +
-  '<button type="button" class="mdr-appbtn mdr-iconbtn" id="mdr-more" aria-haspopup="true" aria-expanded="false" data-i18n-al="moreActions">⋯</button>' +
+  '<button type="button" class="mdr-appbtn mdr-iconbtn" id="mdr-more" aria-haspopup="true" aria-expanded="false" data-i18n-al="moreActions" data-i18n-title="moreActions">' +
+  '<svg class="mdr-svg" viewBox="0 0 24 24" fill="none"><circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg>' +
+  '</button>' +
   '<div class="mdr-menu" id="mdr-menu" role="menu" hidden>' +
   '<button type="button" role="menuitem" data-act="sample" data-i18n="loadSample">Load sample</button>' +
+  '<button type="button" role="menuitem" data-act="rich-sample" data-i18n="loadRichSample">Load rich sample</button>' +
   '<button type="button" role="menuitem" data-act="upload" data-i18n="uploadMarkdown">Upload Markdown…</button>' +
   '<div class="mdr-menu-sep" role="separator"></div>' +
   '<button type="button" role="menuitem" data-act="share" class="mdr-mobile-only" data-i18n="shareReview">Share review</button>' +
@@ -344,34 +366,100 @@ const previewRoot = document.createElement('div');
 previewRoot.id = 'mdr-preview';
 readView.appendChild(previewRoot);
 
+// --- Clipboard (plain-text) view --------------------------------------------
+// A read-only preview of exactly what "Share review" copies, so reviewers can
+// see the plain text before sending it.
+const clipView = document.createElement('section');
+clipView.className = 'mdr-clip';
+clipView.hidden = true;
+clipView.setAttribute('aria-label', t('clipboardTitle'));
+clipView.setAttribute('data-i18n-al', 'clipboardTitle');
+clipView.innerHTML =
+  '<div class="mdr-clip-inner">' +
+  '<div class="mdr-clip-head">' +
+  '<div><h2 data-i18n="clipboardTitle">Clipboard preview</h2>' +
+  '<p class="mdr-clip-hint" data-i18n="clipboardHint"></p></div>' +
+  '<button type="button" class="mdr-btn primary" id="mdr-clip-copy" data-i18n="copyToClipboard">Copy to clipboard</button>' +
+  '</div>' +
+  '<pre class="mdr-clip-pre" id="mdr-clip-pre"></pre>' +
+  '</div>';
+
 document.body.appendChild(appbar);
 document.body.appendChild(sourceView);
 document.body.appendChild(readView);
+document.body.appendChild(clipView);
+
+// Applies the configured document width by setting the shared `data-width`
+// attribute on <html> (the same knob the VS Code preview uses). Switching is
+// instant — the stylesheet maps the attribute to the sheet's max-width.
+function applyPageWidth(width: PageWidth): void {
+  const value = PAGE_WIDTHS.includes(width) ? width : 'medium';
+  document.documentElement.setAttribute('data-width', value);
+  const label = t(WIDTH_LABEL_KEY[value]);
+  if (widthBtn) {
+    widthBtn.dataset.width = value;
+    widthBtn.setAttribute('aria-label', `${t('pageWidthLabel')} · ${label}`);
+    widthBtn.setAttribute('title', `${t('pageWidthLabel')} · ${label}`);
+  }
+  const widthCode = appbar.querySelector('#mdr-width-code');
+  if (widthCode) {
+    widthCode.textContent = label;
+  }
+}
+
+const WIDTH_LABEL_KEY: Record<PageWidth, string> = {
+  narrow: 'pageWidthNarrow',
+  medium: 'pageWidthMedium',
+  wide: 'pageWidthWide',
+  full: 'pageWidthFull',
+};
 
 const textarea = sourceView.querySelector('#mdr-textarea') as HTMLTextAreaElement;
 
 let controller: PreviewController | null = null;
 
 // --- View switching ---------------------------------------------------------
-function setView(view: 'read' | 'source'): void {
-  const read = view === 'read';
-  readView.hidden = !read;
-  sourceView.hidden = read;
+type ViewName = 'read' | 'source' | 'clip';
+
+// Fills the clipboard preview with the exact plain text "Share review" copies.
+function refreshClipPreview(): void {
+  const pre = clipView.querySelector('#mdr-clip-pre');
+  if (!pre) {
+    return;
+  }
+  const text = shareText().trim();
+  pre.textContent = text.length ? text : t('clipboardEmpty');
+  pre.classList.toggle('empty', text.length === 0);
+}
+
+function setView(view: ViewName): void {
+  readView.hidden = view !== 'read';
+  sourceView.hidden = view !== 'source';
+  clipView.hidden = view !== 'clip';
   appbar.querySelectorAll<HTMLElement>('.mdr-vtab').forEach((tab) => {
     const active = tab.dataset.view === view;
     tab.classList.toggle('active', active);
     tab.setAttribute('aria-selected', String(active));
   });
-  if (read) {
+  if (view === 'read') {
     controller?.setPanelOpen(controller.isPanelOpen());
+  } else if (view === 'clip') {
+    refreshClipPreview();
   }
 }
 
 appbar.querySelectorAll<HTMLElement>('.mdr-vtab').forEach((tab) => {
   tab.addEventListener('click', () =>
-    setView((tab.dataset.view as 'read' | 'source') ?? 'read')
+    setView((tab.dataset.view as ViewName) ?? 'read')
   );
 });
+
+(clipView.querySelector('#mdr-clip-copy') as HTMLElement).addEventListener(
+  'click',
+  () => {
+    void shareReview();
+  }
+);
 
 // --- Render -----------------------------------------------------------------
 function applyMarkdown(next: string, switchToRead = true): void {
@@ -419,6 +507,10 @@ const commentsBadge = appbar.querySelector('#mdr-comments-badge') as HTMLElement
 function updateCommentsBadge(stats: ReviewStats): void {
   commentsBadge.textContent = String(stats.open);
   commentsBadge.classList.toggle('zero', stats.open === 0);
+  // Keep the clipboard preview live if the reviewer is looking at it.
+  if (!clipView.hidden) {
+    refreshClipPreview();
+  }
 }
 
 commentsToggle.addEventListener('click', () => {
@@ -605,6 +697,16 @@ function loadSample(): void {
   showToast(t('loadedSample'), 'success');
 }
 
+function loadRichSample(): void {
+  if (!RICH_SAMPLE_DOC) {
+    showToast(t('richSampleUnavailable'), 'error');
+    return;
+  }
+  textarea.value = RICH_SAMPLE_DOC;
+  applyMarkdown(RICH_SAMPLE_DOC);
+  showToast(t('loadedRichSample'), 'success');
+}
+
 // --- More menu --------------------------------------------------------------
 const moreBtn = appbar.querySelector('#mdr-more') as HTMLButtonElement;
 const menu = appbar.querySelector('#mdr-menu') as HTMLElement;
@@ -635,6 +737,9 @@ menu.querySelectorAll<HTMLElement>('[data-act]').forEach((btn) => {
     switch (btn.dataset.act) {
       case 'sample':
         loadSample();
+        break;
+      case 'rich-sample':
+        loadRichSample();
         break;
       case 'upload':
         fileInput.click();
@@ -678,6 +783,14 @@ modal.innerHTML =
   '<div id="mdr-qr-list"></div>' +
   '<button type="button" class="mdr-btn" id="mdr-qr-add" data-i18n="addReply">+ Add reply</button>' +
   '<p class="mdr-hint" data-i18n="quickReplyHint">Shown as one-click verdict pills on every comment. Tone sets the colour and icon.</p></div>' +
+  '<div class="mdr-field"><span class="mdr-field-label" data-i18n="pageWidthLabel">Page width</span>' +
+  '<select id="mdr-page-width" class="mdr-select" data-i18n-al="pageWidthLabel">' +
+  '<option value="narrow" data-i18n="pageWidthNarrow">Narrow</option>' +
+  '<option value="medium" data-i18n="pageWidthMedium">Medium</option>' +
+  '<option value="wide" data-i18n="pageWidthWide">Wide</option>' +
+  '<option value="full" data-i18n="pageWidthFull">Full width</option>' +
+  '</select>' +
+  '<p class="mdr-hint" data-i18n="pageWidthHint">Sets how wide the rendered document is. Wider fits big tables; narrower is easier to read.</p></div>' +
   '<div class="mdr-field"><span class="mdr-field-label" data-i18n="shareTemplate">Share summary template</span>' +
   '<textarea id="mdr-share-header" data-i18n-al="shareHeaderAria"></textarea>' +
   '<label class="mdr-check"><input type="checkbox" id="mdr-inc-line" /> <span data-i18n="includeLineNumber">Include line number</span></label>' +
@@ -748,6 +861,8 @@ function openSettings(): void {
     settings.includeLineText;
   (modal.querySelector('#mdr-inc-comment') as HTMLInputElement).checked =
     settings.includeComment;
+  (modal.querySelector('#mdr-page-width') as HTMLSelectElement).value =
+    settings.pageWidth;
   modal.hidden = false;
 }
 
@@ -802,9 +917,12 @@ modal.addEventListener('click', (e) => {
         .checked,
       includeComment: (modal.querySelector('#mdr-inc-comment') as HTMLInputElement)
         .checked,
+      pageWidth: (modal.querySelector('#mdr-page-width') as HTMLSelectElement)
+        .value as PageWidth,
     };
     persistSettings();
     controller?.setStatuses(settings.quickReplies);
+    applyPageWidth(settings.pageWidth);
     closeSettings();
     showToast(t('settingsSaved'), 'success');
   }
@@ -822,6 +940,7 @@ document.addEventListener('keydown', (e) => {
 // and overrides that.
 const THEME_KEY = 'markthread.theme';
 const themeBtn = appbar.querySelector('#mdr-theme') as HTMLButtonElement;
+const widthBtn = appbar.querySelector('#mdr-width') as HTMLButtonElement;
 type ThemeMode = 'system' | 'light' | 'dark';
 const THEME_CYCLE: ThemeMode[] = ['system', 'light', 'dark'];
 let themeMode: ThemeMode = 'system';
@@ -869,6 +988,20 @@ themeBtn?.addEventListener('click', () => {
   } catch {
     /* ignore */
   }
+});
+
+// --- Page width toggle ------------------------------------------------------
+// Cycles narrow -> medium -> wide -> full, mirroring the theme toggle. The
+// chosen width applies instantly (via the shared `data-width` attribute) and is
+// persisted with the rest of the browser settings.
+widthBtn?.addEventListener('click', () => {
+  const current = PAGE_WIDTHS.includes(settings.pageWidth)
+    ? settings.pageWidth
+    : 'medium';
+  const next = PAGE_WIDTHS[(PAGE_WIDTHS.indexOf(current) + 1) % PAGE_WIDTHS.length];
+  settings = { ...settings, pageWidth: next };
+  persistSettings();
+  applyPageWidth(next);
 });
 
 // --- Accent palette picker --------------------------------------------------
@@ -985,6 +1118,12 @@ function relabelUI(): void {
   renderAccentMenu();
   applyLangButton();
   applyThemeMode(themeMode);
+  applyPageWidth(
+    PAGE_WIDTHS.includes(settings.pageWidth) ? settings.pageWidth : 'medium'
+  );
+  if (!clipView.hidden) {
+    refreshClipPreview();
+  }
 }
 
 onLangChange(() => relabelUI());
@@ -1033,6 +1172,7 @@ if (!initialDoc) {
 }
 document.documentElement.lang = getLang() === 'zh' ? 'zh-CN' : 'en';
 relabelUI();
+applyPageWidth(settings.pageWidth);
 textarea.value = initialDoc;
 applyMarkdown(initialDoc);
 setView('read');
