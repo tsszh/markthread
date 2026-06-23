@@ -369,6 +369,11 @@ function enhanceTable(
   }
 
   updateInfo();
+
+  // Auto-fit every column to its content on first render so wide tables show
+  // their values without manual fitting (still adjustable via the toolbar and
+  // column resizers afterwards).
+  autoFitAll();
 }
 
 // Measures the natural rendered width of each column from the header cells

@@ -14,7 +14,6 @@ import type { QuickReply, StatusTone } from './defaults';
 import {
   describeTableCell,
   formatStructured,
-  STRUCTURED_HEADER,
   type ReviewThread as CopyThread,
 } from '../core';
 import type { HostAdapter, PreviewInitData, PreviewThread } from './hostAdapter';
@@ -70,11 +69,13 @@ const SAMPLE_DOC = [
   '',
   '## Table',
   '',
-  '| Feature | Status | Owner |',
-  '| --- | --- | --- |',
-  '| Charts | Done | tsszh |',
-  '| Comments | Done | tsszh |',
-  '| Side panel | Done | tsszh |',
+  '| Feature | Status | Owner | Priority | ETA | Effort | Risk | Reviewer | Version | Notes |',
+  '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+  '| Charts | Done | tsszh | High | Q1 | 3d | Low | alice | 1.0.0 | Ships with Chart.js + ECharts |',
+  '| Comments | Done | tsszh | High | Q1 | 5d | Medium | bob | 1.1.0 | Threaded review comments |',
+  '| Side panel | Done | tsszh | Medium | Q2 | 2d | Low | carol | 1.2.0 | Inbox and outline tabs |',
+  '| Clipboard | Done | tsszh | Medium | Q2 | 1d | Low | dave | 1.2.0 | Copies structured summary |',
+  '| PWA install | Done | tsszh | Low | Q3 | 4d | Medium | erin | 1.3.0 | Add to Home Screen on iOS |',
   '',
   '## Blockquote',
   '',
@@ -191,7 +192,7 @@ interface WebSettings {
 function defaultSettings(): WebSettings {
   return {
     quickReplies: DEFAULT_QUICK_REPLIES_RICH.map((q) => ({ ...q })),
-    shareHeader: STRUCTURED_HEADER,
+    shareHeader: 'Here are my comments',
     includeLineNumber: true,
     includeLineText: true,
     includeComment: true,
@@ -441,6 +442,9 @@ function setView(view: ViewName): void {
     tab.classList.toggle('active', active);
     tab.setAttribute('aria-selected', String(active));
   });
+  // Each tab is a fresh surface, so start it at the top instead of inheriting
+  // the previous view's scroll position.
+  window.scrollTo({ top: 0 });
   if (view === 'read') {
     controller?.setPanelOpen(controller.isPanelOpen());
   } else if (view === 'clip') {
@@ -479,6 +483,7 @@ function applyMarkdown(next: string, switchToRead = true): void {
       currentUser: CURRENT_USER,
       onStats: updateCommentsBadge,
       statuses: settings.quickReplies,
+      onCopyComments: () => void shareReview(),
     });
   }
   if (switchToRead) {
@@ -620,20 +625,57 @@ function shareText(): string {
   });
 }
 
+// Copy text to the clipboard with an iOS-friendly fallback. iOS Safari only
+// exposes navigator.clipboard in a secure context; over plain HTTP (or in
+// older WebViews) it is undefined, so we synchronously fall back to the legacy
+// execCommand path, which still works while we are inside the click gesture.
+async function copyTextToClipboard(text: string): Promise<boolean> {
+  if (window.isSecureContext && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Fall through to the legacy path below.
+    }
+  }
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.top = '0';
+    ta.style.left = '0';
+    ta.style.width = '1px';
+    ta.style.height = '1px';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    const selection = document.getSelection();
+    const saved =
+      selection && selection.rangeCount > 0
+        ? selection.getRangeAt(0)
+        : null;
+    ta.focus();
+    ta.select();
+    ta.setSelectionRange(0, text.length);
+    const ok = document.execCommand('copy');
+    ta.remove();
+    if (saved && selection) {
+      selection.removeAllRanges();
+      selection.addRange(saved);
+    }
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
 async function shareReview(): Promise<void> {
   const text = shareText();
-  try {
-    await navigator.clipboard.writeText(text);
-    showToast(t('copiedSummary'), 'success');
-  } catch {
-    const blob = new Blob([text], { type: 'text/plain' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'markthread-review.txt';
-    a.click();
-    URL.revokeObjectURL(a.href);
-    showToast(t('clipboardUnavailable'), 'info');
-  }
+  const ok = await copyTextToClipboard(text);
+  showToast(
+    ok ? t('copiedSummary') : t('clipboardUnavailable'),
+    ok ? 'success' : 'error'
+  );
 }
 
 fileInput.addEventListener('change', () => {
@@ -678,6 +720,7 @@ importInput.addEventListener('change', () => {
           currentUser: CURRENT_USER,
           onStats: updateCommentsBadge,
           statuses: settings.quickReplies,
+          onCopyComments: () => void shareReview(),
         });
       }
       setView('read');
@@ -810,41 +853,51 @@ const qrList = modal.querySelector('#mdr-qr-list') as HTMLElement;
 function addQrRow(reply: QuickReply): void {
   const row = document.createElement('div');
   row.className = 'mdr-qr-row';
+  row.dataset.tone = reply.tone;
   const text = document.createElement('input');
   text.type = 'text';
   text.value = reply.label;
   text.setAttribute('aria-label', t('quickReplyLabelAria'));
-  const select = document.createElement('select');
-  select.setAttribute('aria-label', t('quickReplyToneAria'));
-  for (const tone of TONES) {
-    const opt = document.createElement('option');
-    opt.value = tone;
-    opt.textContent = tone;
-    if (tone === reply.tone) {
-      opt.selected = true;
-    }
-    select.appendChild(opt);
-  }
-  const preview = document.createElement('span');
-  preview.className = 'mdr-status mdr-qr-preview';
-  const renderPreview = (): void => {
-    const tone = select.value as StatusTone;
-    preview.dataset.tone = tone;
-    preview.innerHTML =
-      `<span class="mdr-status-glyph" aria-hidden="true">${glyphForTone(
-        tone
-      )}</span><span>${text.value || t('labelPlaceholder')}</span>`;
+
+  // Colour picker: a row of tinted swatches (the verdict glyph shown in its
+  // tone colour) instead of a text dropdown, so the colour is obvious at a
+  // glance. The chosen tone is stored on the row for save().
+  const swatches = document.createElement('div');
+  swatches.className = 'mdr-tone-swatches';
+  swatches.setAttribute('role', 'radiogroup');
+  swatches.setAttribute('aria-label', t('quickReplyToneAria'));
+  const swatchBtns: HTMLButtonElement[] = [];
+  const selectTone = (tone: StatusTone): void => {
+    row.dataset.tone = tone;
+    swatchBtns.forEach((b) => {
+      const on = b.dataset.tone === tone;
+      b.classList.toggle('selected', on);
+      b.setAttribute('aria-checked', String(on));
+    });
   };
-  text.addEventListener('input', renderPreview);
-  select.addEventListener('change', renderPreview);
-  renderPreview();
+  for (const tone of TONES) {
+    const sw = document.createElement('button');
+    sw.type = 'button';
+    sw.className = 'mdr-status mdr-tone-swatch';
+    sw.dataset.tone = tone;
+    sw.setAttribute('role', 'radio');
+    sw.setAttribute('aria-label', tone);
+    sw.innerHTML = `<span class="mdr-status-glyph" aria-hidden="true">${glyphForTone(
+      tone
+    )}</span>`;
+    sw.addEventListener('click', () => selectTone(tone));
+    swatches.appendChild(sw);
+    swatchBtns.push(sw);
+  }
+  selectTone(reply.tone);
+
   const remove = document.createElement('button');
   remove.type = 'button';
   remove.className = 'mdr-iconbtn';
   remove.setAttribute('aria-label', t('removeQuickReply'));
   remove.textContent = '✕';
   remove.addEventListener('click', () => row.remove());
-  row.append(text, select, preview, remove);
+  row.append(text, swatches, remove);
   qrList.appendChild(row);
 }
 
@@ -899,8 +952,7 @@ modal.addEventListener('click', (e) => {
     const quickReplies: QuickReply[] = [];
     qrList.querySelectorAll<HTMLElement>('.mdr-qr-row').forEach((row) => {
       const label = (row.querySelector('input') as HTMLInputElement).value.trim();
-      const tone = (row.querySelector('select') as HTMLSelectElement)
-        .value as StatusTone;
+      const tone = (row.dataset.tone as StatusTone) ?? 'neutral';
       if (label) {
         quickReplies.push({ label, tone });
       }

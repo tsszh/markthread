@@ -94,7 +94,6 @@ const M: Record<string, Record<Lang, Entry>> = {
   quickReplyLabelAria: { en: 'Quick reply label', zh: '快捷回复文本' },
   quickReplyToneAria: { en: 'Quick reply tone', zh: '快捷回复色调' },
   removeQuickReply: { en: 'Remove quick reply', zh: '移除快捷回复' },
-  labelPlaceholder: { en: 'Label', zh: '标签' },
 
   // Toasts / dialogs
   exportedThreads: {
@@ -136,8 +135,8 @@ const M: Record<string, Record<Lang, Entry>> = {
     zh: '评审摘要已复制到剪贴板',
   },
   clipboardUnavailable: {
-    en: 'Clipboard unavailable, downloaded the review summary instead',
-    zh: '剪贴板不可用，已改为下载评审摘要',
+    en: 'Could not copy to clipboard',
+    zh: '无法复制到剪贴板',
   },
   settingsSaved: { en: 'Settings saved', zh: '设置已保存' },
 

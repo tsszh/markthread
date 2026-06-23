@@ -55,6 +55,8 @@ export interface MountOptions {
   onStats?: (stats: ReviewStats) => void;
   /** Configurable quick-reply verdict pills (defaults to the review statuses). */
   statuses?: QuickReply[];
+  /** When set, the side panel shows a "copy review to clipboard" button. */
+  onCopyComments?: () => void;
 }
 
 type Filter = 'all' | 'open' | 'resolved' | 'mine';
@@ -83,6 +85,7 @@ const ICON_PATHS: Record<string, string> = {
   edit: 'M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z',
   comment: 'M21 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z',
   reopen: 'M4 4v6h6M20 20v-6h-6M20 9a8 8 0 0 0-14-3M4 15a8 8 0 0 0 14 3',
+  copy: 'M9 9h9a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1zM5 15H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v1',
 };
 
 function icon(name: keyof typeof ICON_PATHS): string {
@@ -726,6 +729,8 @@ export function mountPreview(
       statusTone,
       createdAt: Date.now(),
     });
+    // Dismiss the popup once the comment is saved (it lives in the side panel).
+    focusedId = null;
     persist();
     renderThreads();
   }
@@ -756,8 +761,10 @@ export function mountPreview(
       ],
     };
     threads.push(thread);
+    // Close the composer popup after creating the comment instead of keeping
+    // the new thread focused/open.
     draft = null;
-    focusedId = thread.id;
+    focusedId = null;
     persist();
     renderThreads();
   }
@@ -1320,6 +1327,11 @@ export function mountPreview(
         t('outline')
       )}</button>` +
       '</div>' +
+      (options.onCopyComments
+        ? `<button type="button" class="mdr-iconbtn mdr-side-copy" aria-label="${esc(
+            t('copyToClipboard')
+          )}" title="${esc(t('copyToClipboard'))}">${icon('copy')}</button>`
+        : '') +
       `<button type="button" class="mdr-iconbtn mdr-side-close" aria-label="${esc(
         t('hideCommentsPanel')
       )}" title="${esc(t('hidePanel'))}">${icon('close')}</button>` +
@@ -1331,6 +1343,9 @@ export function mountPreview(
     panel
       .querySelector('.mdr-side-close')
       ?.addEventListener('click', () => setPanelOpen(false));
+    panel
+      .querySelector('.mdr-side-copy')
+      ?.addEventListener('click', () => options.onCopyComments?.());
     panel.querySelectorAll<HTMLElement>('.mdr-tab').forEach((tab) => {
       tab.addEventListener('click', () => {
         panelTab = (tab.dataset.tab as PanelTab) ?? 'inbox';
@@ -1350,6 +1365,60 @@ export function mountPreview(
     fab.innerHTML = icon('comment') + '<span class="mdr-fab-count">0</span>';
     fab.addEventListener('click', () => setPanelOpen(true));
     document.body.appendChild(fab);
+
+    // Mobile: a horizontal swipe opens/closes the comments drawer. Opening
+    // starts from the right portion of the page (a left swipe); closing accepts
+    // a rightward swipe anywhere while the panel is open. We start the open
+    // zone inside the viewport (right ~40%) rather than the very edge, because
+    // iOS Safari reserves the screen edge for its own back/forward gesture.
+    let swipeX = 0;
+    let swipeY = 0;
+    let swipeTracking = false;
+    document.addEventListener(
+      'touchstart',
+      (e) => {
+        if (
+          e.touches.length !== 1 ||
+          !window.matchMedia('(max-width: 879px)').matches
+        ) {
+          swipeTracking = false;
+          return;
+        }
+        // Don't hijack horizontal swipes that belong to a scrollable region
+        // (wide tables, code blocks): those gestures must scroll the content.
+        const target = e.target as HTMLElement | null;
+        if (target?.closest('.mdr-table-scroll, pre')) {
+          swipeTracking = false;
+          return;
+        }
+        swipeX = e.touches[0].clientX;
+        swipeY = e.touches[0].clientY;
+        swipeTracking = panelOpen || swipeX > window.innerWidth * 0.6;
+      },
+      { passive: true }
+    );
+    document.addEventListener(
+      'touchend',
+      (e) => {
+        if (!swipeTracking) {
+          return;
+        }
+        swipeTracking = false;
+        const touch = e.changedTouches[0];
+        const dx = touch.clientX - swipeX;
+        const dy = touch.clientY - swipeY;
+        // Require a clearly horizontal swipe to avoid hijacking vertical scroll.
+        if (Math.abs(dx) < 60 || Math.abs(dx) <= Math.abs(dy) * 1.5) {
+          return;
+        }
+        if (dx < 0 && !panelOpen) {
+          setPanelOpen(true);
+        } else if (dx > 0 && panelOpen) {
+          setPanelOpen(false);
+        }
+      },
+      { passive: true }
+    );
 
     // Open by default on a roomy screen; start closed on small screens.
     setPanelOpen(window.matchMedia('(min-width: 880px)').matches);

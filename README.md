@@ -66,6 +66,11 @@ locally (see [Development](#development)). Then:
 4. **Share**: **Export JSON** writes a `{ markdown, threads }` file;
    **Import JSON** loads it back. Everything stays in your browser.
 
+> **Install as an app (iOS / Android):** open the live demo in Safari (or
+> Chrome), then **Share → Add to Home Screen**. MarkThread launches full-screen
+> as a standalone app — no browser chrome — while remaining the same web page.
+> The layout respects the notch and home indicator.
+
 ### Option B — VS Code / Cursor extension
 
 Install the `.vsix` (**Extensions: Install from VSIX**, see

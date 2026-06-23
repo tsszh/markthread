@@ -130,16 +130,27 @@ body.markdown-body:not(.mdr-app) {
   max-width: var(--mdr-page-max, min(48rem, 92%)) !important;
 }
 
+/* The standalone app owns the whole viewport, so nothing should ever scroll it
+   sideways. `clip` (not hidden) keeps the sticky app bar working while killing
+   the iOS "shrink-to-fit / pan left-right" caused by any stray wide child. */
+body.mdr-app {
+  overflow-x: clip;
+  max-width: 100%;
+}
+
 .mdr-appbar {
   position: sticky;
   top: 0;
   z-index: 60;
-  height: var(--appbar-h);
+  /* Grow under the iOS status bar / notch when installed to the Home Screen
+     (safe-area insets resolve to 0 on desktop and the VS Code webview). */
+  height: calc(var(--appbar-h) + env(safe-area-inset-top));
   box-sizing: border-box;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 0 16px;
+  padding: env(safe-area-inset-top) max(16px, env(safe-area-inset-right)) 0
+    max(16px, env(safe-area-inset-left));
   background: color-mix(in srgb, var(--bg-card, #fff) 80%, transparent);
   -webkit-backdrop-filter: saturate(180%) blur(14px);
   backdrop-filter: saturate(180%) blur(14px);
@@ -563,6 +574,10 @@ body.mdr-app #mdr-preview {
   --gutter: clamp(1.8rem, 3vw, 3rem);
   position: relative;
   width: 100%;
+  /* Include the gutter padding inside the 100% width. Without this the sheet is
+     `100% + 2 * gutter`, which overflows the viewport on phones (where
+     max-width is removed) and clips the document on the right. */
+  box-sizing: border-box;
   max-width: var(--mdr-page-max, min(48rem, 92%));
   min-width: 0;
   margin: 0 auto;
@@ -1408,16 +1423,28 @@ tr.mdr-filter-row.mdr-hidden {
   font-size: 13px;
   font-family: inherit;
 }
-.mdr-qr-row select {
+/* Tone colour picker: tinted swatches showing each verdict glyph in its tone
+   colour, so the colour (not just a name) is what you pick. */
+.mdr-tone-swatches {
+  display: inline-flex;
   flex: 0 0 auto;
-  border: 1px solid var(--border-strong, #d4d9e0);
-  border-radius: 7px;
-  padding: 6px 8px;
-  font-size: 13px;
-  background: var(--bg-card, #fff);
+  gap: 5px;
 }
-.mdr-qr-preview {
-  flex: 0 0 auto;
+.mdr-tone-swatch {
+  width: 30px;
+  justify-content: center;
+  padding: 6px 0;
+  cursor: pointer;
+  user-select: none;
+}
+.mdr-tone-swatch.selected {
+  outline: 2px solid currentColor;
+  outline-offset: 1px;
+  border-color: currentColor;
+}
+/* Give the share-summary template room to breathe — it is multi-line prose. */
+#mdr-share-header {
+  min-height: 150px;
 }
 .mdr-select {
   width: 100%;
@@ -1503,9 +1530,9 @@ tr.mdr-filter-row.mdr-hidden {
    column, so opening/closing the panel does not change the page layout. */
 .mdr-side-panel {
   position: fixed;
-  top: calc(var(--appbar-h) + 10px);
-  right: 10px;
-  bottom: 10px;
+  top: calc(var(--appbar-h) + 10px + env(safe-area-inset-top));
+  right: calc(10px + env(safe-area-inset-right));
+  bottom: calc(10px + env(safe-area-inset-bottom));
   width: var(--panel-w);
   display: flex;
   flex-direction: column;
@@ -1526,7 +1553,10 @@ tr.mdr-filter-row.mdr-hidden {
 .mdr-side-head {
   display: flex;
   align-items: center;
-  gap: 8px;
+  /* Wrap the title / Inbox-Outline switch / copy / close controls onto a
+     second row when the panel is too narrow to fit them on one line. */
+  flex-wrap: wrap;
+  gap: 6px 8px;
   padding: 10px 10px 10px 14px;
   border-bottom: 1px solid var(--border, #e4e7ec);
 }
@@ -1809,8 +1839,8 @@ tr.mdr-filter-row.mdr-hidden {
    the panel is closed; hidden while the panel is open. */
 .mdr-fab {
   position: fixed;
-  right: 18px;
-  bottom: 18px;
+  right: calc(18px + env(safe-area-inset-right));
+  bottom: calc(18px + env(safe-area-inset-bottom));
   z-index: 56;
   display: inline-flex;
   align-items: center;
@@ -1839,7 +1869,7 @@ tr.mdr-filter-row.mdr-hidden {
 .mdr-toasts {
   position: fixed;
   left: 50%;
-  bottom: 22px;
+  bottom: calc(22px + env(safe-area-inset-bottom));
   transform: translateX(-50%);
   z-index: 90;
   display: flex;
@@ -1881,7 +1911,7 @@ tr.mdr-filter-row.mdr-hidden {
   /* On phones the sheet flattens to full-bleed reading: a floating card with
      side margins would waste the narrow viewport. */
   body.mdr-app .mdr-main {
-    padding: 12px 0 96px;
+    padding: 12px 0 calc(96px + env(safe-area-inset-bottom));
   }
   body.mdr-app.mdr-panel-open .mdr-main {
     padding-right: 0;
@@ -1893,13 +1923,19 @@ tr.mdr-filter-row.mdr-hidden {
     border: none;
     border-radius: 0;
     box-shadow: none;
-    padding: 8px var(--gutter) 96px;
+    padding: 8px max(var(--gutter), env(safe-area-inset-right))
+      calc(96px + env(safe-area-inset-bottom))
+      max(var(--gutter), env(safe-area-inset-left));
   }
   .mdr-side-panel {
-    top: 0;
+    /* Start below the sticky app bar so the panel header (title + Inbox /
+       Outline switch + close) is not hidden behind it. */
+    top: calc(var(--appbar-h) + env(safe-area-inset-top));
     right: 0;
     bottom: 0;
     width: min(360px, 88vw);
+    /* Clear the home indicator when the panel is full-height. */
+    padding-bottom: env(safe-area-inset-bottom);
     border-radius: 0;
     border: none;
     border-left: 1px solid var(--border, #e4e7ec);
@@ -1927,17 +1963,91 @@ tr.mdr-filter-row.mdr-hidden {
     left: -1.3rem;
     height: 18px;
   }
+  /* iOS auto-zooms the page when a focused field has a font-size below 16px.
+     Force 16px on phones so tapping any input/textarea never zooms. */
+  body.mdr-app input,
+  body.mdr-app textarea,
+  body.mdr-app select {
+    font-size: 16px !important;
+  }
 }
 
 @media (max-width: 560px) {
   .mdr-brand-name {
     display: none;
   }
-  .mdr-vtab {
-    padding: 5px 10px;
-  }
   .mdr-appbar {
+    gap: 4px;
+    /* Keep the notch/status-bar inset while tightening the phone padding. */
+    padding: env(safe-area-inset-top) max(8px, env(safe-area-inset-right)) 0
+      max(8px, env(safe-area-inset-left));
+  }
+  /* Compact the segmented control so the whole bar fits one phone row. */
+  .mdr-vtabs {
+    margin-left: 2px;
+    padding: 2px;
+  }
+  .mdr-vtab {
+    padding: 5px 9px;
+    font-size: 12.5px;
+  }
+  /* Drop secondary/cosmetic controls on phones so the bar stays adaptive:
+     the accent picker is decorative and page width is a no-op on the
+     full-bleed mobile sheet (still reachable from Settings). Theme, language,
+     and the More menu remain. */
+  #mdr-accent,
+  #mdr-width {
+    display: none;
+  }
+  /* Language stays accessible but collapses to an icon-only globe to save room
+     (important for the EN / 简体中文 toggle on small screens). */
+  .mdr-appbtn.mdr-iconbtn {
+    width: 32px;
+  }
+  .mdr-appbtn.mdr-iconbtn.mdr-langbtn {
+    width: 32px;
+    min-width: 32px;
+    padding: 0;
+    gap: 0;
+  }
+  .mdr-lang-code {
+    display: none;
+  }
+  /* Table toolbar: collapse the Filter / Auto-fit / Columns / Reset buttons to
+     icon-only so they stay on one row instead of wrapping (labels remain as
+     tooltips / aria-labels). */
+  #mdr-preview .mdr-table-toolbar {
+    gap: 4px;
+    padding: 6px;
+  }
+  #mdr-preview .mdr-tbtn {
+    width: 30px;
+    padding: 0;
+    gap: 0;
+    justify-content: center;
+  }
+  #mdr-preview .mdr-tbtn span {
+    display: none;
+  }
+  /* Settings modal: become a near full-width sheet that respects the safe
+     areas, and let the quick-reply rows wrap so nothing overflows sideways. */
+  .mdr-modal {
+    padding: 10px;
+    align-items: flex-end;
+  }
+  .mdr-modal-card {
+    width: 100%;
+    max-height: 90vh;
+    padding: 16px 14px calc(16px + env(safe-area-inset-bottom));
+  }
+  .mdr-qr-row {
+    flex-wrap: wrap;
     gap: 6px;
-    padding: 0 10px;
+  }
+  .mdr-qr-row input[type='text'] {
+    flex: 1 1 100%;
+  }
+  .mdr-modal-actions {
+    flex-wrap: wrap;
   }
 }

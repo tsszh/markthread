@@ -10,7 +10,8 @@ import { fileURLToPath } from 'node:url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, '..');
 const samplesDir = join(rootDir, 'samples');
-const standaloneHtml = join(rootDir, 'dist', 'standalone', 'index.html');
+const standaloneDir = join(rootDir, 'dist', 'standalone');
+const standaloneHtml = join(standaloneDir, 'index.html');
 const port = Number(process.env.PORT ?? 4173);
 
 const contentTypes = {
@@ -20,6 +21,8 @@ const contentTypes = {
   '.gif': 'image/gif',
   '.svg': 'image/svg+xml',
   '.webp': 'image/webp',
+  '.webmanifest': 'application/manifest+json',
+  '.json': 'application/json',
 };
 
 function serveStandalone(res) {
@@ -40,6 +43,24 @@ createServer((req, res) => {
   if (pathname.startsWith('/assets/')) {
     const safePath = normalize(pathname).replace(/^(\.\.[/\\])+/, '');
     const filePath = join(samplesDir, safePath);
+    if (existsSync(filePath)) {
+      const type =
+        contentTypes[extname(filePath).toLowerCase()] ??
+        'application/octet-stream';
+      res.writeHead(200, { 'Content-Type': type });
+      res.end(readFileSync(filePath));
+      return;
+    }
+    res.writeHead(404);
+    res.end('Not found');
+    return;
+  }
+
+  // Serve the PWA sidecar files (manifest + icons) the same way GitHub Pages
+  // does, so "Add to Home Screen" can be exercised locally.
+  if (pathname === '/manifest.webmanifest' || pathname.startsWith('/icons/')) {
+    const safePath = normalize(pathname).replace(/^(\.\.[/\\])+/, '');
+    const filePath = join(standaloneDir, safePath);
     if (existsSync(filePath)) {
       const type =
         contentTypes[extname(filePath).toLowerCase()] ??
