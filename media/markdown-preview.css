@@ -352,6 +352,10 @@ body,
 
 p {
   margin: 0 0 1.1rem !important;
+  /* Long URLs / file paths have no soft break points; break them instead of
+     widening the page and triggering horizontal scroll. */
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
 }
 
 strong, b {
@@ -370,6 +374,8 @@ h1, h2, h3, h4, h5, h6 {
   line-height: 1.25 !important;
   letter-spacing: -0.018em !important;
   margin: 2.2rem 0 1rem !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
 }
 
 /* Editorial hierarchy: scale, weight and rhythm carry the structure instead of
@@ -668,8 +674,11 @@ p > code, li > code, td > code, blockquote > p > code, h1 > code, h2 > code, h3 
   border: 1px solid var(--code-border) !important;
   padding: 1px 6px !important;
   border-radius: var(--radius-sm) !important;
-  white-space: nowrap !important;
-  word-break: keep-all !important;
+  /* Allow long inline code (file paths, URLs) to wrap instead of overflowing
+     the page; short tokens still stay on one line because they fit. */
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
   font-weight: 500 !important;
 }
 
@@ -763,6 +772,8 @@ ul, ol {
 
 li {
   margin-bottom: 0.4rem !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
 }
 
 li::marker {
@@ -791,6 +802,8 @@ a {
   color: var(--accent) !important;
   text-decoration: none !important;
   font-weight: 500 !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
 }
 
 a:hover {
