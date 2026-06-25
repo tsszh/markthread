@@ -22,124 +22,12 @@ import { t, getLang, setLang, onLangChange, LANGS, type Lang } from './i18n';
 const STORE_PREFIX = 'mdr-comments:';
 const LAST_DOC_KEY = 'mdr-last-doc';
 
-// The full component showcase (samples/rich-sample.md) is baked into the bundle
-// at build time (see esbuild.js) so "Load rich sample" works offline.
+// The single component showcase (samples/rich-sample.md) is baked into the
+// bundle at build time (see esbuild.js) so it works offline (file:// and the
+// GitHub Pages deploy), both on a first visit and from the "Load sample" menu.
 declare const __RICH_SAMPLE__: string;
-const RICH_SAMPLE_DOC: string =
+const SAMPLE_DOC: string =
   typeof __RICH_SAMPLE__ === 'string' ? __RICH_SAMPLE__ : '';
-
-// A showcase document covering every supported component (frontmatter, tables,
-// task lists, quotes, alerts/callouts, code, and all three chart kinds). Loaded
-// by "Load sample" and on a first visit with no saved document. Built from an
-// array so the fenced code blocks don't need backtick escaping.
-const SAMPLE_DOC = [
-  '---',
-  'title: MarkThread — Sample',
-  'owner: tsszh',
-  'status: demo',
-  'tags: [markdown, review, charts]',
-  '---',
-  '',
-  '# Component Showcase',
-  '',
-  'This sample exercises **every** supported block. Hover any line for the 💬',
-  'button, or select text to comment on a phrase.',
-  '',
-  '## Text formatting',
-  '',
-  'Mix of **bold**, *italic*, ~~strikethrough~~, `inline code`, and a',
-  '[link](https://github.com/tsszh/markthread).',
-  '',
-  '## Lists',
-  '',
-  '- First bullet item',
-  '- Second bullet item',
-  '  - Nested item',
-  '- Third bullet item',
-  '',
-  '1. Ordered one',
-  '2. Ordered two',
-  '3. Ordered three',
-  '',
-  '## Task list',
-  '',
-  '- [x] Render Markdown in the browser',
-  '- [x] Per-line and per-selection comments',
-  '- [ ] Publish to the marketplace',
-  '',
-  '## Table',
-  '',
-  '| Feature | Status | Owner | Priority | ETA | Effort | Risk | Reviewer | Version | Notes |',
-  '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
-  '| Charts | Done | tsszh | High | Q1 | 3d | Low | alice | 1.0.0 | Ships with Chart.js + ECharts |',
-  '| Comments | Done | tsszh | High | Q1 | 5d | Medium | bob | 1.1.0 | Threaded review comments |',
-  '| Side panel | Done | tsszh | Medium | Q2 | 2d | Low | carol | 1.2.0 | Inbox and outline tabs |',
-  '| Clipboard | Done | tsszh | Medium | Q2 | 1d | Low | dave | 1.2.0 | Copies structured summary |',
-  '| PWA install | Done | tsszh | Low | Q3 | 4d | Medium | erin | 1.3.0 | Add to Home Screen on iOS |',
-  '',
-  '## Blockquote',
-  '',
-  '> A blockquote for emphasis or citations.',
-  '> It can span multiple lines.',
-  '',
-  '## Alerts',
-  '',
-  '> [!NOTE]',
-  '> Useful information that users should know.',
-  '',
-  '> [!TIP]',
-  '> A helpful suggestion.',
-  '',
-  '> [!IMPORTANT]',
-  '> Key information users need to succeed.',
-  '',
-  '> [!WARNING]',
-  '> Urgent info that needs attention.',
-  '',
-  '> [!CAUTION]',
-  '> Advises about risks or negative outcomes.',
-  '',
-  '## Code block',
-  '',
-  '```typescript',
-  'function greet(name: string): string {',
-  '  return `Hello, ${name}!`;',
-  '}',
-  '```',
-  '',
-  '## ECharts',
-  '',
-  '```echarts',
-  '{',
-  '  "tooltip": {},',
-  '  "xAxis": { "type": "category", "data": ["Mon","Tue","Wed","Thu","Fri"] },',
-  '  "yAxis": { "type": "value" },',
-  '  "series": [{ "type": "line", "smooth": true, "areaStyle": {}, "data": [120, 200, 150, 280, 320] }]',
-  '}',
-  '```',
-  '',
-  '## Obsidian Chart',
-  '',
-  '```chart',
-  'type: bar',
-  'labels: [Organic, Paid, Referral, Email]',
-  'series:',
-  '  - title: Q2',
-  '    data: [32, 18, 12, 9]',
-  '  - title: Q3',
-  '    data: [44, 26, 15, 14]',
-  '```',
-  '',
-  '## Mermaid',
-  '',
-  '```mermaid',
-  'flowchart LR',
-  '  A[Write] --> B[Render]',
-  '  B --> C[Review]',
-  '  C --> D[Ship]',
-  '```',
-  '',
-].join('\n');
 
 // Small stable hash (djb2) used as the per-document localStorage bucket key.
 function fingerprint(text: string): string {
@@ -329,7 +217,6 @@ appbar.innerHTML =
   '</button>' +
   '<div class="mdr-menu" id="mdr-menu" role="menu" hidden>' +
   '<button type="button" role="menuitem" data-act="sample" data-i18n="loadSample">Load sample</button>' +
-  '<button type="button" role="menuitem" data-act="rich-sample" data-i18n="loadRichSample">Load rich sample</button>' +
   '<button type="button" role="menuitem" data-act="upload" data-i18n="uploadMarkdown">Upload Markdown…</button>' +
   '<div class="mdr-menu-sep" role="separator"></div>' +
   '<button type="button" role="menuitem" data-act="share" class="mdr-mobile-only" data-i18n="shareReview">Share review</button>' +
@@ -740,16 +627,6 @@ function loadSample(): void {
   showToast(t('loadedSample'), 'success');
 }
 
-function loadRichSample(): void {
-  if (!RICH_SAMPLE_DOC) {
-    showToast(t('richSampleUnavailable'), 'error');
-    return;
-  }
-  textarea.value = RICH_SAMPLE_DOC;
-  applyMarkdown(RICH_SAMPLE_DOC);
-  showToast(t('loadedRichSample'), 'success');
-}
-
 // --- More menu --------------------------------------------------------------
 const moreBtn = appbar.querySelector('#mdr-more') as HTMLButtonElement;
 const menu = appbar.querySelector('#mdr-menu') as HTMLElement;
@@ -780,9 +657,6 @@ menu.querySelectorAll<HTMLElement>('[data-act]').forEach((btn) => {
     switch (btn.dataset.act) {
       case 'sample':
         loadSample();
-        break;
-      case 'rich-sample':
-        loadRichSample();
         break;
       case 'upload':
         fileInput.click();

@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.34
+
+- **Long URLs and file paths no longer overflow the page.** Inline code and prose now wrap unbreakable strings (URLs, Windows/Unix paths) instead of forcing horizontal scroll, while short tokens still stay on one line. Code blocks keep their own internal horizontal scroll. Applies to the VS Code preview, the custom webview, and the standalone web app.
+
+## 0.1.33
+
+- **Installable as an app (PWA / iOS).** Added app icons, a web manifest, and Apple meta tags so the standalone web app can be added to the iOS/Android Home Screen and launch full-screen, with safe-area (notch / home-indicator) handling across the app bar, panel, FAB, and toasts.
+- **Mobile-adaptive UI.** Horizontal-overflow guard, an adaptive app bar, an icon-only table toolbar, a full-width settings modal, and 16px inputs to stop iOS focus-zoom.
+- **Comments panel upgrades.** A copy-to-clipboard button, swipe to open/close the drawer (excluding table/code scroll areas), and the composer now closes after a comment is added.
+- **Clipboard reliability.** iOS-friendly copy with an `execCommand` fallback, and a clear error instead of silently downloading when copy fails.
+- **Tables.** Columns auto-fit on first render; the sample table was widened to exercise the oversize case.
+
 ## 0.1.32
 
 - **Toolbar polish (standalone web app).** Aligned the app-bar icon buttons consistently (the "more actions" affordance is now a real three-dot icon and icon/text buttons no longer clip), so the quick-action cluster lines up.

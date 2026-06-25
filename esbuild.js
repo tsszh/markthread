@@ -122,12 +122,58 @@ function writeStandaloneHtml() {
     'utf8'
   );
 
+  // Canonical site URL (GitHub Pages project page) used for SEO/GEO metadata:
+  // description, Open Graph, Twitter Card, and JSON-LD structured data so search
+  // engines and AI answer engines can discover and quote the app accurately.
+  const siteUrl = 'https://tsszh.github.io/markthread/';
+  const title = 'MarkThread — Review Markdown with humans, send feedback to agents';
+  const description =
+    'MarkThread renders Markdown beautifully and reviews it line-by-line — charts (Mermaid/ECharts/Obsidian), interactive tables, per-line and per-cell comments, and quick-reply verdicts. Runs fully client-side as a web app/PWA, plus a VS Code/Cursor extension.';
+  const ogImage = siteUrl + 'icons/icon-512.png';
+  const jsonLd = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'MarkThread',
+    description,
+    applicationCategory: 'DeveloperApplication',
+    operatingSystem: 'Any (web browser); Visual Studio Code; Cursor',
+    url: siteUrl,
+    image: ogImage,
+    license: 'https://opensource.org/licenses/MIT',
+    isAccessibleForFree: true,
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+    softwareHelp: 'https://github.com/tsszh/markthread',
+    featureList: [
+      'Markdown rendering with GitHub-style alerts and a Properties table',
+      'Client-side charts: Mermaid, Apache ECharts, Obsidian Charts',
+      'Interactive tables: sort, filter, show/hide columns, auto-fit, resize',
+      'Per-line, text-selection, and per-table-cell comments',
+      'Quick-reply verdict pills and a filterable comments inbox',
+      'Dark mode, accent palettes, English / 简体中文 interface',
+      'Installable PWA with mobile-adaptive, safe-area-aware UI',
+    ],
+  });
+
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="theme-color" content="#ffffff" />
+<meta name="description" content="${description}" />
+<meta name="keywords" content="Markdown review, Markdown viewer, code review, AI agents, Mermaid, ECharts, Obsidian Charts, VS Code extension, Cursor, PWA" />
+<meta name="author" content="tsszh" />
+<link rel="canonical" href="${siteUrl}" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="MarkThread" />
+<meta property="og:title" content="${title}" />
+<meta property="og:description" content="${description}" />
+<meta property="og:url" content="${siteUrl}" />
+<meta property="og:image" content="${ogImage}" />
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content="${title}" />
+<meta name="twitter:description" content="${description}" />
+<meta name="twitter:image" content="${ogImage}" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -135,7 +181,8 @@ function writeStandaloneHtml() {
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
 <link rel="icon" href="icons/icon-192.png" type="image/png" />
 <link rel="manifest" href="manifest.webmanifest" />
-<title>MarkThread</title>
+<title>${title}</title>
+<script type="application/ld+json">${jsonLd}</script>
 <style>${baseCss}</style>
 <style>${reviewCss}</style>
 </head>

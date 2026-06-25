@@ -1,94 +1,59 @@
 ---
-title: MarkThread Rich Sample
+title: MarkThread — Component Showcase
 author: tsszh
 created: 2026-06-03
-status: draft
+status: demo
 priority: high
-rating: 5
-published: false
 tags:
   - markdown
   - review
-  - showcase
-aliases:
-  - rich-sample
-  - component-gallery
-references:
-  - https://github.com/microsoft/vscode/blob/main/extensions/markdown-language-features/src/preview/preview.ts
-  - https://code.visualstudio.com/api/extension-guides/webview-views
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/overflow-wrap
+  - charts
 homepage: https://github.com/tsszh/markthread/blob/main/README.md
 description: >
-  A long, folded multi-line description used to verify how the properties
-  renderer handles block scalars that wrap across several source lines
-  instead of collapsing or dropping the continuation lines.
-notes: |
-  Literal block scalar.
-  Line two keeps its own line.
-inline_tags: [markdown, preview, frontmatter]
+  A folded multi-line description used to verify how the properties renderer
+  handles block scalars that wrap across several source lines instead of
+  collapsing or dropping the continuation lines.
 ---
 
-# Rich Component Sample
+# Component Showcase
 
-A full component showcase for **markthread** preview styling. The block above
-is an Obsidian-style YAML *properties* frontmatter.
+This sample exercises **every** supported block — headings, tables, charts,
+alerts, and code. Hover any line for the 💬 button, or select text to comment
+on a phrase.
 
-## Headings
+## Heading levels
 
-### Heading Level 3
+### Heading level 3 — section
 
-#### Heading Level 4
+Body text under a level-3 heading, with **bold**, *italic*, and `inline code`.
 
-##### Heading Level 5
+#### Heading level 4 — subsection
 
-###### Heading Level 6
+Supporting detail that sits beneath the subsection title.
 
-## Text Formatting
+##### Heading level 5 — minor heading
 
-This paragraph mixes **bold**, *italic*, ***bold italic***, ~~strikethrough~~,
-`inline code`, and a [link to GitHub](https://github.com). Here is a footnote-like
-note and an inline math-looking token `O(n log n)`.
+A smaller heading still gets its own line and comfortable spacing.
 
-## Mermaid Diagrams
+###### Heading level 6 — smallest heading
 
-```mermaid
-flowchart TD
-  mdEditor["md source (gutter +)"] -->|Comments API| controller["CommentController"]
-  controller --> store["tracked threads"]
-  store --> copyCmd["copyToClipboard"]
-  store --> inlineCmd["exportInline"]
-  store --> clearCmd["clearAll"]
-```
+The deepest heading level, handy for footnotes or fine print.
 
+## Text formatting
 
-```mermaid
-sequenceDiagram
-  participant U as User
-  participant E as Extension
-  participant AI as AI Agent
-  U->>E: Add review comment on line
-  E->>E: Track thread
-  U->>E: Copy to Clipboard
-  E-->>AI: Structured review text
-  AI-->>U: Suggested edits
-```
+Mix of **bold**, *italic*, ***bold italic***, ~~strikethrough~~, `inline code`,
+and a [link to GitHub](https://github.com/tsszh/markthread).
 
-## Oversized Table
+## Long URLs & file paths
 
-| ID | Component | Status | Owner | Priority | Effort (pts) | Target Release | Last Updated | Notes |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | Preview CSS | Done | tsszh | High | 3 | 0.1.0 | 2026-06-01 | Inter font, soft light theme |
-| 2 | Comments API | Done | tsszh | High | 8 | 0.1.1 | 2026-06-03 | Gutter threads now tracked |
-| 3 | Copy to Clipboard | Done | tsszh | Medium | 2 | 0.1.1 | 2026-06-03 | Structured AI instruction header |
-| 4 | Export Inline | Done | tsszh | Medium | 3 | 0.1.1 | 2026-06-03 | Idempotent end-of-line markers |
-| 5 | Clear All | Done | tsszh | Low | 1 | 0.1.1 | 2026-06-03 | Optional marker strip |
-| 6 | Status Bar Buttons | Done | tsszh | Medium | 2 | 0.1.2 | 2026-06-03 | Colored codicon actions |
-| 7 | Enter to Submit | Done | tsszh | Medium | 1 | 0.1.2 | 2026-06-03 | Shift+Enter for newline |
-| 8 | Mermaid Preview | Done | tsszh | Low | 2 | 0.1.2 | 2026-06-03 | Client-side render |
-| 9 | Frontmatter Properties | Done | tsszh | Low | 2 | 0.1.2 | 2026-06-03 | Obsidian-style table |
-| 10 | Marketplace Publish | Pending | tsszh | Low | 5 | TBD | - | Needs publisher id |
-| 11 | Multi-file Export | Backlog | tsszh | Low | 8 | TBD | - | Group by file |
-| 12 | Severity Levels | Backlog | tsszh | Low | 5 | TBD | - | note / warn / block |
+Long unbreakable strings wrap to fit the column instead of forcing a horizontal
+scrollbar across the whole page. A long URL:
+
+https://example.com/markthread/docs/guides/advanced/configuration/reference/v2/options?section=rendering&theme=oxblood&token=4f9a2c7e8b1d6053a1f2e3d4c5b6a7980f1e2d3c&utm_source=readme&utm_medium=docs&utm_campaign=launch
+
+And a deeply nested relative file path:
+
+`../../packages/renderer/src/components/preview/standalone/layout/very-long-directory-name/DeeplyNestedReviewComponent.module.css`
 
 ## Lists
 
@@ -103,24 +68,25 @@ sequenceDiagram
 
 1. Install the extension
 2. Open a Markdown file
-3. Hover the gutter and click `+`
+3. Hover the gutter and click the 💬 button
 4. Submit with Enter
 
-### Task List
+## Task list
 
-- [x] Migrate CSS
-- [x] Track gutter comments
-- [x] Status bar buttons
-- [ ] Publish to marketplace
-- [ ] Add severity levels
+- [x] Render Markdown in the browser
+- [x] Per-line and per-selection comments
+- [ ] Publish to the marketplace
 
-## Code Block
+## Table
 
-```typescript
-function greet(name: string): string {
-  return `Hello, ${name}!`;
-}
-```
+| ID | Component | Status | Owner | Priority | Effort (pts) | Target | Last Updated | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | Preview CSS | Done | tsszh | High | 3 | 0.1.0 | 2026-06-01 | Inter font, soft light theme |
+| 2 | Comments API | Done | tsszh | High | 8 | 0.1.1 | 2026-06-03 | Gutter threads now tracked |
+| 3 | Copy to Clipboard | Done | tsszh | Medium | 2 | 0.1.1 | 2026-06-03 | Structured AI instruction header |
+| 4 | Charts | Done | tsszh | Medium | 3 | 0.1.2 | 2026-06-03 | ECharts + Obsidian + Mermaid |
+| 5 | Frontmatter Properties | Done | tsszh | Low | 2 | 0.1.2 | 2026-06-03 | Obsidian-style table |
+| 6 | Marketplace Publish | Pending | tsszh | Low | 5 | TBD | - | Needs publisher id |
 
 ## Blockquote
 
@@ -131,24 +97,56 @@ function greet(name: string): string {
 ## Alerts
 
 > [!NOTE]
-> This is a note alert with a blue background.
+> Useful information that users should know.
 
 > [!TIP]
-> This is a tip alert with a green background.
+> A helpful suggestion.
 
 > [!IMPORTANT]
-> This is an important alert with a purple background.
+> Key information users need to succeed.
 
 > [!WARNING]
-> This is a warning alert with an amber background.
+> Urgent info that needs attention.
 
 > [!CAUTION]
-> This is a caution alert with a red background.
+> Advises about risks or negative outcomes.
 
-## Image
+## Code block
 
-![markthread sample image](./assets/sample-image.png)
+```typescript
+function greet(name: string): string {
+  return `Hello, ${name}!`;
+}
+```
 
----
+## ECharts
 
-End of rich sample document.
+```echarts
+{
+  "tooltip": {},
+  "xAxis": { "type": "category", "data": ["Mon","Tue","Wed","Thu","Fri"] },
+  "yAxis": { "type": "value" },
+  "series": [{ "type": "line", "smooth": true, "areaStyle": {}, "data": [120, 200, 150, 280, 320] }]
+}
+```
+
+## Obsidian Chart
+
+```chart
+type: bar
+labels: [Organic, Paid, Referral, Email]
+series:
+  - title: Q2
+    data: [32, 18, 12, 9]
+  - title: Q3
+    data: [44, 26, 15, 14]
+```
+
+## Mermaid
+
+```mermaid
+flowchart LR
+  A[Write] --> B[Render]
+  B --> C[Review]
+  C --> D[Ship]
+```

@@ -33,7 +33,6 @@ const M: Record<string, Record<Lang, Entry>> = {
 
   // More menu
   loadSample: { en: 'Load sample', zh: '加载示例' },
-  loadRichSample: { en: 'Load rich sample', zh: '加载完整示例' },
   uploadMarkdown: { en: 'Upload Markdown…', zh: '上传 Markdown…' },
   exportComments: { en: 'Export comments', zh: '导出评论' },
   importComments: { en: 'Import comments', zh: '导入评论' },
@@ -122,14 +121,6 @@ const M: Record<string, Record<Lang, Entry>> = {
     zh: '该文件不是有效的评审导出文件',
   },
   loadedSample: { en: 'Loaded the sample document', zh: '已加载示例文档' },
-  loadedRichSample: {
-    en: 'Loaded the rich sample document',
-    zh: '已加载完整示例文档',
-  },
-  richSampleUnavailable: {
-    en: 'Rich sample is unavailable in this build',
-    zh: '此版本中没有可用的完整示例',
-  },
   copiedSummary: {
     en: 'Review summary copied to clipboard',
     zh: '评审摘要已复制到剪贴板',
