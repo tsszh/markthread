@@ -47,6 +47,9 @@ const M: Record<string, Record<Lang, Entry>> = {
     en: 'Paste Markdown here, then Render & review…',
     zh: '在此粘贴 Markdown，然后点击"渲染并评审"…',
   },
+  selectAll: { en: 'Select all', zh: '全选' },
+  pasteClipboard: { en: 'Paste', zh: '粘贴' },
+  clearText: { en: 'Clear', zh: '清空' },
 
   // Clipboard (plain-text) view
   clipboardTitle: { en: 'Clipboard preview', zh: '复制预览' },
@@ -109,7 +112,17 @@ const M: Record<string, Record<Lang, Entry>> = {
       `Clear all ${p.n} comment thread${p.n === 1 ? '' : 's'}? This cannot be undone.`,
     zh: (p) => `确定清除全部 ${p.n} 条评论？此操作无法撤销。`,
   },
+  clearAllConfirm: { en: 'Clear all', zh: '清除全部' },
   clearedAll: { en: 'Cleared all comments', zh: '已清除所有评论' },
+  pastedClipboard: {
+    en: 'Pasted from clipboard',
+    zh: '已从剪贴板粘贴',
+  },
+  pasteManual: {
+    en: 'Press Ctrl/Cmd+V to paste here',
+    zh: '请按 Ctrl/Cmd+V 在此粘贴',
+  },
+  clearedSource: { en: 'Cleared the editor', zh: '已清空编辑器' },
   loadedFile: { en: (p) => `Loaded ${p.name}`, zh: (p) => `已加载 ${p.name}` },
   couldNotRead: { en: 'Could not read that file', zh: '无法读取该文件' },
   importedThreads: {

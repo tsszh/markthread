@@ -173,6 +173,86 @@ function showToast(message: string, kind: 'success' | 'error' | 'info' = 'info')
   }, 2800);
 }
 
+// --- Confirm dialog ---------------------------------------------------------
+// A small promise-based modal used for destructive actions (e.g. clearing all
+// comments), so the user gets a deliberate second confirmation instead of an
+// accidental one-click wipe. Resolves true on confirm, false otherwise.
+function confirmDialog(opts: {
+  title: string;
+  message: string;
+  confirmLabel: string;
+  danger?: boolean;
+}): Promise<boolean> {
+  return new Promise((resolve) => {
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const overlay = document.createElement('div');
+    overlay.className = 'mdr-modal mdr-confirm';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.innerHTML =
+      '<div class="mdr-modal-card mdr-confirm-card">' +
+      `<div class="mdr-modal-head"><h2>${escHtml(opts.title)}</h2></div>` +
+      `<p class="mdr-confirm-msg">${escHtml(opts.message)}</p>` +
+      '<div class="mdr-modal-actions">' +
+      `<button type="button" class="mdr-btn" data-confirm="0">${escHtml(
+        t('cancel')
+      )}</button>` +
+      `<button type="button" class="mdr-btn ${
+        opts.danger ? 'danger' : 'primary'
+      }" data-confirm="1">${escHtml(opts.confirmLabel)}</button>` +
+      '</div></div>';
+    document.body.appendChild(overlay);
+
+    let settled = false;
+    const finish = (value: boolean): void => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      document.removeEventListener('keydown', onKey, true);
+      overlay.remove();
+      // Return focus to whatever triggered the dialog (the focus() is a no-op
+      // if that element was removed or disabled, e.g. the cleared-out button).
+      previouslyFocused?.focus?.();
+      resolve(value);
+    };
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        finish(false);
+      }
+    };
+
+    overlay.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      if (target === overlay) {
+        finish(false);
+        return;
+      }
+      const btn = target.closest<HTMLElement>('[data-confirm]');
+      if (btn) {
+        finish(btn.dataset.confirm === '1');
+      }
+    });
+    document.addEventListener('keydown', onKey, true);
+    // For destructive dialogs focus the safe "Cancel" action so a stray Enter
+    // doesn't immediately confirm; otherwise focus the primary action.
+    const focusSelector = opts.danger ? '[data-confirm="0"]' : '[data-confirm="1"]';
+    requestAnimationFrame(() =>
+      (overlay.querySelector(focusSelector) as HTMLElement)?.focus()
+    );
+  });
+}
+
+function escHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 // --- App bar ----------------------------------------------------------------
 const appbar = document.createElement('header');
 appbar.className = 'mdr-appbar';
@@ -216,9 +296,6 @@ appbar.innerHTML =
   '<svg class="mdr-svg" viewBox="0 0 24 24" fill="none"><circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg>' +
   '</button>' +
   '<div class="mdr-menu" id="mdr-menu" role="menu" hidden>' +
-  '<button type="button" role="menuitem" data-act="sample" data-i18n="loadSample">Load sample</button>' +
-  '<button type="button" role="menuitem" data-act="upload" data-i18n="uploadMarkdown">Upload Markdown…</button>' +
-  '<div class="mdr-menu-sep" role="separator"></div>' +
   '<button type="button" role="menuitem" data-act="share" class="mdr-mobile-only" data-i18n="shareReview">Share review</button>' +
   '<button type="button" role="menuitem" data-act="export" data-i18n="exportComments">Export comments</button>' +
   '<button type="button" role="menuitem" data-act="import" data-i18n="importComments">Import comments</button>' +
@@ -244,6 +321,14 @@ sourceView.innerHTML =
   '<button type="button" class="mdr-btn" id="mdr-source-cancel" data-i18n="cancel">Cancel</button>' +
   '<button type="button" class="mdr-btn primary" id="mdr-render" data-i18n="renderReview">Render &amp; review</button>' +
   '</div></div>' +
+  '<div class="mdr-source-toolbar">' +
+  '<button type="button" class="mdr-btn" id="mdr-src-sample" data-i18n="loadSample">Load sample</button>' +
+  '<button type="button" class="mdr-btn" id="mdr-src-upload" data-i18n="uploadMarkdown">Upload Markdown…</button>' +
+  '<span class="mdr-toolbar-sep" aria-hidden="true"></span>' +
+  '<button type="button" class="mdr-btn" id="mdr-src-selectall" data-i18n="selectAll">Select all</button>' +
+  '<button type="button" class="mdr-btn" id="mdr-src-paste" data-i18n="pasteClipboard">Paste</button>' +
+  '<button type="button" class="mdr-btn mdr-btn-quiet-danger" id="mdr-src-clear" data-i18n="clearText">Clear</button>' +
+  '</div>' +
   '<textarea class="mdr-source-textarea" id="mdr-textarea" spellcheck="false" ' +
   'data-i18n-ph="sourcePlaceholder"></textarea>' +
   '</div>';
@@ -371,6 +456,7 @@ function applyMarkdown(next: string, switchToRead = true): void {
       onStats: updateCommentsBadge,
       statuses: settings.quickReplies,
       onCopyComments: () => void shareReview(),
+      onClearAll: () => void clearReview(),
     });
   }
   if (switchToRead) {
@@ -387,6 +473,68 @@ function applyMarkdown(next: string, switchToRead = true): void {
   () => {
     textarea.value = markdown;
     setView('read');
+  }
+);
+
+// --- Source quick-edit toolbar ----------------------------------------------
+// Replaces the current selection (or inserts at the caret) and keeps focus +
+// caret position sensible for continued typing.
+function insertIntoTextarea(text: string): void {
+  const start = textarea.selectionStart ?? textarea.value.length;
+  const end = textarea.selectionEnd ?? textarea.value.length;
+  textarea.value = textarea.value.slice(0, start) + text + textarea.value.slice(end);
+  const caret = start + text.length;
+  textarea.focus();
+  textarea.setSelectionRange(caret, caret);
+}
+
+async function pasteFromClipboard(): Promise<void> {
+  try {
+    if (window.isSecureContext && navigator.clipboard?.readText) {
+      const text = await navigator.clipboard.readText();
+      insertIntoTextarea(text);
+      showToast(t('pastedClipboard'), 'success');
+      return;
+    }
+  } catch {
+    /* permission denied or unavailable; fall through to the hint below */
+  }
+  // Reading the clipboard programmatically isn't allowed here (insecure
+  // context, no permission, or an unsupported browser); guide the user to the
+  // native paste shortcut, which always works inside the focused textarea.
+  textarea.focus();
+  showToast(t('pasteManual'), 'info');
+}
+
+(sourceView.querySelector('#mdr-src-sample') as HTMLElement).addEventListener(
+  'click',
+  () => loadSample()
+);
+(sourceView.querySelector('#mdr-src-upload') as HTMLElement).addEventListener(
+  'click',
+  () => fileInput.click()
+);
+(sourceView.querySelector('#mdr-src-selectall') as HTMLElement).addEventListener(
+  'click',
+  () => {
+    textarea.focus();
+    textarea.select();
+  }
+);
+(sourceView.querySelector('#mdr-src-paste') as HTMLElement).addEventListener(
+  'click',
+  () => void pasteFromClipboard()
+);
+(sourceView.querySelector('#mdr-src-clear') as HTMLElement).addEventListener(
+  'click',
+  () => {
+    if (!textarea.value) {
+      textarea.focus();
+      return;
+    }
+    textarea.value = '';
+    textarea.focus();
+    showToast(t('clearedSource'), 'info');
   }
 );
 
@@ -448,9 +596,9 @@ function exportComments(): void {
   );
 }
 
-// Drops every comment for the current document (after confirmation) and
-// persists the empty set so it stays cleared across reloads.
-function clearReview(): void {
+// Drops every comment for the current document (after a deliberate second
+// confirmation) and persists the empty set so it stays cleared across reloads.
+async function clearReview(): Promise<void> {
   const count = controller
     ? controller.getThreads().length
     : loadThreads(docKey).length;
@@ -458,7 +606,12 @@ function clearReview(): void {
     showToast(t('noCommentsToClear'), 'info');
     return;
   }
-  const ok = window.confirm(t('confirmClear', { n: count }));
+  const ok = await confirmDialog({
+    title: t('clearAllComments'),
+    message: t('confirmClear', { n: count }),
+    confirmLabel: t('clearAllConfirm'),
+    danger: true,
+  });
   if (!ok) {
     return;
   }
@@ -608,6 +761,7 @@ importInput.addEventListener('change', () => {
           onStats: updateCommentsBadge,
           statuses: settings.quickReplies,
           onCopyComments: () => void shareReview(),
+          onClearAll: () => void clearReview(),
         });
       }
       setView('read');
@@ -655,12 +809,6 @@ menu.querySelectorAll<HTMLElement>('[data-act]').forEach((btn) => {
   btn.addEventListener('click', () => {
     setMenuOpen(false);
     switch (btn.dataset.act) {
-      case 'sample':
-        loadSample();
-        break;
-      case 'upload':
-        fileInput.click();
-        break;
       case 'export':
         exportComments();
         break;
@@ -668,7 +816,7 @@ menu.querySelectorAll<HTMLElement>('[data-act]').forEach((btn) => {
         importInput.click();
         break;
       case 'clear':
-        clearReview();
+        void clearReview();
         break;
       case 'share':
         void shareReview();

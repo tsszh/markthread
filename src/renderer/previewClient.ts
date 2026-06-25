@@ -57,6 +57,8 @@ export interface MountOptions {
   statuses?: QuickReply[];
   /** When set, the side panel shows a "copy review to clipboard" button. */
   onCopyComments?: () => void;
+  /** When set, the side panel shows a "clear all comments" footer button. */
+  onClearAll?: () => void;
 }
 
 type Filter = 'all' | 'open' | 'resolved' | 'mine';
@@ -1292,6 +1294,7 @@ export function mountPreview(
   let panel: HTMLElement | null = null;
   let panelBody: HTMLElement | null = null;
   let panelCount: HTMLElement | null = null;
+  let panelClearBtn: HTMLButtonElement | null = null;
   let scrim: HTMLElement | null = null;
   let fab: HTMLButtonElement | null = null;
   let panelOpen = false;
@@ -1336,16 +1339,24 @@ export function mountPreview(
         t('hideCommentsPanel')
       )}" title="${esc(t('hidePanel'))}">${icon('close')}</button>` +
       '</div>' +
-      '<div class="mdr-side-scroll"></div>';
+      '<div class="mdr-side-scroll"></div>' +
+      (options.onClearAll
+        ? '<div class="mdr-side-foot">' +
+          `<button type="button" class="mdr-side-clear">${icon('trash')}` +
+          `<span>${esc(t('clearAllComments'))}</span></button>` +
+          '</div>'
+        : '');
     document.body.appendChild(panel);
     panelBody = panel.querySelector('.mdr-side-scroll');
     panelCount = panel.querySelector('.mdr-side-count');
+    panelClearBtn = panel.querySelector('.mdr-side-clear');
     panel
       .querySelector('.mdr-side-close')
       ?.addEventListener('click', () => setPanelOpen(false));
     panel
       .querySelector('.mdr-side-copy')
       ?.addEventListener('click', () => options.onCopyComments?.());
+    panelClearBtn?.addEventListener('click', () => options.onClearAll?.());
     panel.querySelectorAll<HTMLElement>('.mdr-tab').forEach((tab) => {
       tab.addEventListener('click', () => {
         panelTab = (tab.dataset.tab as PanelTab) ?? 'inbox';
@@ -1449,6 +1460,9 @@ export function mountPreview(
     }
     if (panelCount) {
       panelCount.textContent = String(threads.length);
+    }
+    if (panelClearBtn) {
+      panelClearBtn.disabled = threads.length === 0;
     }
     if (!panel || !panelBody) {
       return;
@@ -1733,6 +1747,10 @@ export function mountPreview(
       if (close) {
         close.setAttribute('aria-label', t('hideCommentsPanel'));
         close.setAttribute('title', t('hidePanel'));
+      }
+      const clearLabel = panel.querySelector('.mdr-side-clear span');
+      if (clearLabel) {
+        clearLabel.textContent = t('clearAllComments');
       }
     }
     fab?.setAttribute('aria-label', t('openComments'));

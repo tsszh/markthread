@@ -484,6 +484,28 @@ body.mdr-app {
   display: flex;
   gap: 8px;
 }
+/* Quick-edit toolbar above the textarea: load/upload + select-all/paste/clear. */
+.mdr-source-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.mdr-toolbar-sep {
+  width: 1px;
+  align-self: stretch;
+  min-height: 20px;
+  background: var(--border, #e4e7ec);
+  margin: 0 2px;
+}
+.mdr-btn-quiet-danger {
+  color: var(--tone-red-fg, #b3261e);
+}
+.mdr-btn-quiet-danger:hover {
+  background: var(--tone-red-bg, #fce8e6);
+  border-color: var(--tone-red-fg, #b3261e);
+}
 .mdr-source-textarea {
   display: block;
   width: 100%;
@@ -975,8 +997,23 @@ body.mdr-app #mdr-preview pre:not(.mermaid) {
   color: #fff;
   border-color: var(--accent, #3b6fe0);
 }
+.mdr-btn.danger {
+  background: var(--tone-red-fg, #b3261e);
+  border-color: var(--tone-red-fg, #b3261e);
+  color: #fff;
+}
 .mdr-btn:hover {
   filter: brightness(0.97);
+}
+/* Confirm dialog (destructive actions) reuses the modal shell. */
+.mdr-confirm-card {
+  width: min(420px, 100%);
+}
+.mdr-confirm-msg {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text-body, #2b3340);
 }
 
 /* --------------------------------------------------------------------------
@@ -1598,6 +1635,40 @@ tr.mdr-filter-row.mdr-hidden {
   flex: 1 1 auto;
   overflow-y: auto;
   padding: 10px;
+}
+/* Footer with the destructive "Clear all comments" action. */
+.mdr-side-foot {
+  flex: 0 0 auto;
+  padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border, #e4e7ec);
+}
+.mdr-side-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  border: 1px solid var(--border-strong, #d4d9e0);
+  background: var(--bg-card, #fff);
+  color: var(--tone-red-fg, #b3261e);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.mdr-side-clear .mdr-svg {
+  width: 15px;
+  height: 15px;
+}
+.mdr-side-clear:hover:not(:disabled) {
+  background: var(--tone-red-bg, #fce8e6);
+  border-color: var(--tone-red-fg, #b3261e);
+}
+.mdr-side-clear:disabled {
+  opacity: 0.45;
+  cursor: default;
+  color: var(--text-muted, #9aa1ac);
 }
 
 /* Inbox filters */
