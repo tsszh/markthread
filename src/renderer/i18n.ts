@@ -123,6 +123,20 @@ const M: Record<string, Record<Lang, Entry>> = {
     zh: '请按 Ctrl/Cmd+V 在此粘贴',
   },
   clearedSource: { en: 'Cleared the editor', zh: '已清空编辑器' },
+  confirmClearSourceTitle: { en: 'Clear document?', zh: '清空文档？' },
+  confirmClearSource: {
+    en: (p) =>
+      p.n > 0
+        ? `This clears the Markdown and its ${p.n} comment${
+            p.n === 1 ? '' : 's'
+          }. This cannot be undone.`
+        : 'This clears the Markdown. This cannot be undone.',
+    zh: (p) =>
+      p.n > 0
+        ? `将同时清空 Markdown 内容和 ${p.n} 条评论,且无法撤销。`
+        : '将清空 Markdown 内容,且无法撤销。',
+  },
+  clearBothConfirm: { en: 'Clear both', zh: '全部清空' },
   loadedFile: { en: (p) => `Loaded ${p.name}`, zh: (p) => `已加载 ${p.name}` },
   couldNotRead: { en: 'Could not read that file', zh: '无法读取该文件' },
   importedThreads: {

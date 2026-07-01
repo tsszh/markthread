@@ -2,7 +2,10 @@
 // document is the default surface, the raw Markdown lives behind a Source tab,
 // and comments persist in localStorage bucketed by a content fingerprint so
 // switching documents starts fresh (and reopening a known document restores its
-// comments). Works fully offline from a file:// URL.
+// comments). Each tab remembers its own document in sessionStorage so a reload
+// restores that tab's document (never another tab's), and a cross-tab registry
+// + garbage collector keeps only the documents currently open in a tab plus the
+// most recent one, dropping the rest. Works fully offline from a file:// URL.
 import { mountPreview, PreviewController, ReviewStats } from './previewClient';
 import {
   DEFAULT_QUICK_REPLIES,
@@ -21,6 +24,21 @@ import { t, getLang, setLang, onLangChange, LANGS, type Lang } from './i18n';
 
 const STORE_PREFIX = 'mdr-comments:';
 const LAST_DOC_KEY = 'mdr-last-doc';
+// Registry of documents currently open across tabs, so garbage collection can
+// keep every live tab's document (localStorage is shared origin-wide) while
+// dropping stale ones. Shape: { [tabId]: { docKey, ts } }.
+const OPEN_DOCS_KEY = 'mdr-open-docs';
+// Per-tab id lives in sessionStorage so it survives a reload but is unique per
+// tab (a fresh tab / restart gets a new one).
+const TAB_ID_KEY = 'mdr-tab-id';
+// The document THIS tab is viewing, kept in sessionStorage so a reload restores
+// the same tab's document (not the origin-wide "last doc", which may belong to
+// another tab). Falls back to LAST_DOC_KEY for a brand-new tab.
+const TAB_DOC_KEY = 'mdr-tab-doc';
+// A registry entry older than this is treated as a dead tab and pruned. The
+// heartbeat refreshes well within this window.
+const OPEN_DOC_TTL_MS = 60_000;
+const HEARTBEAT_MS = 15_000;
 
 // The single component showcase (samples/rich-sample.md) is baked into the
 // bundle at build time (see esbuild.js) so it works offline (file:// and the
@@ -56,6 +74,140 @@ function saveThreads(key: string, threads: PreviewThread[]): void {
     localStorage.setItem(STORE_PREFIX + key, JSON.stringify(threads));
   } catch {
     /* storage full or unavailable; ignore */
+  }
+}
+
+// --- Multi-tab document registry + garbage collection -----------------------
+// localStorage is shared across every tab of the origin, so we keep a registry
+// of which document each open tab is viewing (with a heartbeat timestamp). GC
+// then keeps only the buckets that are either still open in a live tab or the
+// single most-recently reviewed document, dropping the rest so old documents
+// don't accumulate forever.
+
+interface OpenDocEntry {
+  docKey: string;
+  ts: number;
+}
+type OpenDocs = Record<string, OpenDocEntry>;
+
+// A stable per-tab id. Stored in sessionStorage so a reload keeps the same id
+// while a brand-new tab (or a restart) gets a fresh one.
+function getTabId(): string {
+  try {
+    let id = sessionStorage.getItem(TAB_ID_KEY);
+    if (!id) {
+      id =
+        Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+      sessionStorage.setItem(TAB_ID_KEY, id);
+    }
+    return id;
+  } catch {
+    // sessionStorage unavailable: fall back to an ephemeral in-memory id so the
+    // rest of the logic still works within this page load.
+    return 'mem-' + Math.random().toString(36).slice(2, 10);
+  }
+}
+
+const TAB_ID = getTabId();
+
+function readOpenDocs(): OpenDocs {
+  try {
+    const raw = localStorage.getItem(OPEN_DOCS_KEY);
+    if (!raw) {
+      return {};
+    }
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? (parsed as OpenDocs) : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeOpenDocs(docs: OpenDocs): void {
+  try {
+    localStorage.setItem(OPEN_DOCS_KEY, JSON.stringify(docs));
+  } catch {
+    /* ignore */
+  }
+}
+
+// Records the document this tab is viewing (refreshing its heartbeat) and then
+// prunes any bucket that is neither open in a live tab nor the latest document.
+function registerActiveDoc(key: string): void {
+  const now = Date.now();
+  const docs = readOpenDocs();
+  docs[TAB_ID] = { docKey: key, ts: now };
+  writeOpenDocs(docs);
+  gcBuckets(docs);
+}
+
+// Persists the document text both origin-wide (LAST_DOC_KEY, used to restore a
+// brand-new tab and to protect the latest bucket from GC) and per-tab
+// (TAB_DOC_KEY in sessionStorage, so reloading THIS tab restores THIS document
+// rather than whatever another tab rendered last).
+function rememberDoc(text: string): void {
+  try {
+    localStorage.setItem(LAST_DOC_KEY, text);
+  } catch {
+    /* ignore */
+  }
+  try {
+    sessionStorage.setItem(TAB_DOC_KEY, text);
+  } catch {
+    /* ignore */
+  }
+}
+
+// Drops orphaned comment buckets. Protected = every doc held by a live tab
+// (heartbeat within TTL) plus the most-recently reviewed document. Also prunes
+// dead tab entries from the registry so it doesn't grow without bound.
+function gcBuckets(docsInput?: OpenDocs): void {
+  try {
+    const now = Date.now();
+    const docs = docsInput ?? readOpenDocs();
+    const protectedKeys = new Set<string>();
+    let changed = false;
+    for (const [tabId, entry] of Object.entries(docs)) {
+      if (
+        entry &&
+        typeof entry.docKey === 'string' &&
+        typeof entry.ts === 'number' &&
+        now - entry.ts <= OPEN_DOC_TTL_MS
+      ) {
+        protectedKeys.add(entry.docKey);
+      } else {
+        delete docs[tabId];
+        changed = true;
+      }
+    }
+    if (changed) {
+      writeOpenDocs(docs);
+    }
+    // Keep the latest reviewed document so a reload / restart can restore it.
+    let lastDoc = '';
+    try {
+      lastDoc = localStorage.getItem(LAST_DOC_KEY) ?? '';
+    } catch {
+      /* ignore */
+    }
+    protectedKeys.add(fingerprint(lastDoc));
+
+    const stale: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const storageKey = localStorage.key(i);
+      if (!storageKey || !storageKey.startsWith(STORE_PREFIX)) {
+        continue;
+      }
+      const docKey = storageKey.slice(STORE_PREFIX.length);
+      if (!protectedKeys.has(docKey)) {
+        stale.push(storageKey);
+      }
+    }
+    for (const key of stale) {
+      localStorage.removeItem(key);
+    }
+  } catch {
+    /* storage unavailable; ignore */
   }
 }
 
@@ -441,11 +593,8 @@ appbar.querySelectorAll<HTMLElement>('.mdr-vtab').forEach((tab) => {
 function applyMarkdown(next: string, switchToRead = true): void {
   markdown = next;
   docKey = fingerprint(next);
-  try {
-    localStorage.setItem(LAST_DOC_KEY, next);
-  } catch {
-    /* ignore */
-  }
+  rememberDoc(next);
+  registerActiveDoc(docKey);
   const data = adapter.init() as PreviewInitData;
   if (controller) {
     controller.setData(data);
@@ -527,16 +676,39 @@ async function pasteFromClipboard(): Promise<void> {
 );
 (sourceView.querySelector('#mdr-src-clear') as HTMLElement).addEventListener(
   'click',
-  () => {
-    if (!textarea.value) {
-      textarea.focus();
-      return;
-    }
-    textarea.value = '';
-    textarea.focus();
-    showToast(t('clearedSource'), 'info');
-  }
+  () => void clearSource()
 );
+
+// Clears the Markdown source together with the current document's comments,
+// after a deliberate confirmation. There is intentionally no "content only"
+// path: dropping the document without its comments would strand them.
+async function clearSource(): Promise<void> {
+  const count = controller
+    ? controller.getThreads().length
+    : loadThreads(docKey).length;
+  if (!textarea.value && count === 0) {
+    textarea.focus();
+    return;
+  }
+  const ok = await confirmDialog({
+    title: t('confirmClearSourceTitle'),
+    message: t('confirmClearSource', { n: count }),
+    confirmLabel: t('clearBothConfirm'),
+    danger: true,
+  });
+  if (!ok) {
+    return;
+  }
+  try {
+    localStorage.removeItem(STORE_PREFIX + docKey);
+  } catch {
+    /* ignore */
+  }
+  textarea.value = '';
+  applyMarkdown('', false);
+  textarea.focus();
+  showToast(t('clearedSource'), 'info');
+}
 
 // --- Comments toggle + badge ------------------------------------------------
 const commentsToggle = appbar.querySelector(
@@ -751,6 +923,8 @@ importInput.addEventListener('change', () => {
       markdown = md;
       docKey = fingerprint(md);
       saveThreads(docKey, threads);
+      rememberDoc(md);
+      registerActiveDoc(docKey);
       const init = adapter.init() as PreviewInitData;
       if (controller) {
         controller.setData(init);
@@ -1233,13 +1407,22 @@ window.addEventListener(
 window.addEventListener('resize', updateProgress, { passive: true });
 
 // --- Boot -------------------------------------------------------------------
-// Restore the last reviewed document (if any) so a refresh brings back both the
-// rendered Markdown and its comments; on a first visit load the showcase sample.
+// Restore the document this tab was viewing so a refresh brings back both the
+// rendered Markdown and its comments. Prefer this tab's own document (kept in
+// sessionStorage) so reloading one tab never yanks in another tab's document;
+// fall back to the origin-wide last doc for a brand-new tab, then the sample.
 let initialDoc = '';
 try {
-  initialDoc = localStorage.getItem(LAST_DOC_KEY) ?? '';
+  initialDoc = sessionStorage.getItem(TAB_DOC_KEY) ?? '';
 } catch {
   /* ignore */
+}
+if (!initialDoc) {
+  try {
+    initialDoc = localStorage.getItem(LAST_DOC_KEY) ?? '';
+  } catch {
+    /* ignore */
+  }
 }
 if (!initialDoc) {
   initialDoc = SAMPLE_DOC;
@@ -1251,3 +1434,20 @@ textarea.value = initialDoc;
 applyMarkdown(initialDoc);
 setView('read');
 requestAnimationFrame(updateProgress);
+
+// Keep this tab's registry heartbeat fresh so other tabs' GC doesn't treat it
+// as dead and drop its document's comments. We deliberately do NOT remove our
+// entry on unload: `pagehide` also fires on a plain reload, and releasing there
+// opens a window where another tab could GC this document's comments before we
+// re-register on boot. Instead a closed tab's entry simply goes stale and is
+// pruned by GC after OPEN_DOC_TTL_MS, which is race-free.
+setInterval(() => registerActiveDoc(docKey), HEARTBEAT_MS);
+// Re-claim our slot when the tab is restored from the back/forward cache or
+// becomes visible again (e.g. after the machine slept and the heartbeat
+// lapsed), so another tab's GC doesn't drop this document's comments.
+window.addEventListener('pageshow', () => registerActiveDoc(docKey));
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    registerActiveDoc(docKey);
+  }
+});
