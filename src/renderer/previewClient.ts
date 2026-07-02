@@ -546,9 +546,17 @@ export function mountPreview(
   }
 
   // --- Thread popup card ----------------------------------------------------
-  function threadBlock(thread: PreviewThread): HTMLElement {
+  // `grouped` renders the card as one of several stacked threads sharing an
+  // anchor: only the focused card gets the accent ring, and the per-card close
+  // button is dropped in favor of the group header's single close.
+  function threadBlock(
+    thread: PreviewThread,
+    opts?: { grouped?: boolean }
+  ): HTMLElement {
     const block = document.createElement('div');
-    block.className = 'mdr-thread focused';
+    block.className =
+      'mdr-thread' +
+      (!opts?.grouped || thread.id === focusedId ? ' focused' : '');
     if (thread.resolved) {
       block.classList.add('resolved');
     }
@@ -589,9 +597,11 @@ export function mountPreview(
     top.appendChild(
       iconButton('trash', t('deleteThread'), () => deleteThread(thread.id))
     );
-    top.appendChild(
-      iconButton('close', t('close'), () => closePopup(), 'mdr-pop-close')
-    );
+    if (!opts?.grouped) {
+      top.appendChild(
+        iconButton('close', t('close'), () => closePopup(), 'mdr-pop-close')
+      );
+    }
     block.appendChild(top);
 
     const body = document.createElement('div');
@@ -665,10 +675,25 @@ export function mountPreview(
     renderThreads();
   }
 
-  function deleteThread(id: string): void {
-    threads = threads.filter((t) => t.id !== id);
-    if (focusedId === id) {
+  // When the focused thread goes away, keep the popup open on a sibling thread
+  // anchored to the same line/cell (if any) instead of abruptly closing it.
+  function refocusSibling(removed: PreviewThread): void {
+    const anchor = threadAnchorEl(removed);
+    if (!anchor) {
       focusedId = null;
+      return;
+    }
+    const sibling = threadsByAnchor()
+      .get(anchor)
+      ?.find((t) => t.id !== removed.id);
+    focusedId = sibling?.id ?? null;
+  }
+
+  function deleteThread(id: string): void {
+    const removed = threads.find((t) => t.id === id);
+    threads = threads.filter((t) => t.id !== id);
+    if (focusedId === id && removed) {
+      refocusSibling(removed);
     }
     persist();
     renderThreads();
@@ -707,7 +732,7 @@ export function mountPreview(
     if (thread.comments.length === 0) {
       threads = threads.filter((t) => t.id !== threadId);
       if (focusedId === threadId) {
-        focusedId = null;
+        refocusSibling(thread);
       }
     }
     persist();
@@ -793,13 +818,14 @@ export function mountPreview(
       );
   }
 
-  function renderThreads(): void {
-    clearAnnotations();
-
-    const sorted = [...threads].sort((a, b) => a.line - b.line);
-
-    // Persistent markers: a left gutter pill for line threads, a top-right
-    // badge inside the cell for table-cell threads.
+  // Group threads by their anchor element (one pass over the thread list).
+  // Used both to render gutter markers and to stack every thread sharing an
+  // anchor in the popup. Sorted by line then by creation time for stable order.
+  function threadsByAnchor(): Map<HTMLElement, PreviewThread[]> {
+    const sorted = [...threads].sort(
+      (a, b) =>
+        a.line - b.line || (a.createdAt ?? 0) - (b.createdAt ?? 0)
+    );
     const byBlock = new Map<HTMLElement, PreviewThread[]>();
     for (const thread of sorted) {
       const el = threadAnchorEl(thread);
@@ -810,6 +836,15 @@ export function mountPreview(
       list.push(thread);
       byBlock.set(el, list);
     }
+    return byBlock;
+  }
+
+  function renderThreads(): void {
+    clearAnnotations();
+
+    // Persistent markers: a left gutter pill for line threads, a top-right
+    // badge inside the cell for table-cell threads.
+    const byBlock = threadsByAnchor();
     for (const [el, list] of byBlock) {
       const open = list.some((t) => !t.resolved);
       const isCell = el.tagName === 'TD' || el.tagName === 'TH';
@@ -831,8 +866,9 @@ export function mountPreview(
         `<span class="mdr-gutter-count">${count}</span>`;
       marker.addEventListener('click', (e) => {
         e.stopPropagation();
-        // Re-open the existing thread (toggle closed if it's already open).
-        if (!draft && focusedId === list[0].id) {
+        // Toggle: if the popup already shows this marker's group (any of its
+        // threads focused), close it; otherwise open the group.
+        if (!draft && list.some((th) => th.id === focusedId)) {
           closePopup();
         } else {
           openThread(list[0].id);
@@ -855,32 +891,71 @@ export function mountPreview(
 
   function renderPopup(): void {
     popEl.innerHTML = '';
+    popEl.classList.remove('mdr-pop-multi');
     popAnchor = null;
-    let node: HTMLElement | null = null;
+    const nodes: HTMLElement[] = [];
+    let focusedNode: HTMLElement | null = null;
 
     if (draft) {
-      node = draftBlock(draft);
+      nodes.push(draftBlock(draft));
       popAnchor = draft.cell ? findCell(draft) : exactAnchor(draft.line);
       popAnchor?.classList.add(draft.cell ? 'mdr-cell-focus' : 'mdr-line-focus');
     } else if (focusedId) {
       const thread = threads.find((t) => t.id === focusedId);
       if (thread) {
-        node = threadBlock(thread);
         popAnchor = threadAnchorEl(thread);
         popAnchor?.classList.add(
           thread.cell ? 'mdr-cell-focus' : 'mdr-line-focus'
         );
+        // All threads sharing this anchor (e.g. two phrase comments on one
+        // line) are shown stacked, so the gutter marker's count is honest:
+        // everything it advertises is reachable from one tap.
+        const group = popAnchor
+          ? threadsByAnchor().get(popAnchor) ?? [thread]
+          : [thread];
+        if (group.length > 1) {
+          popEl.classList.add('mdr-pop-multi');
+          const head = document.createElement('div');
+          head.className = 'mdr-pop-head';
+          const label = document.createElement('span');
+          label.className = 'mdr-pop-head-label';
+          const count = group.reduce((n, t) => n + t.comments.length, 0);
+          label.textContent = thread.cell
+            ? t('commentsOnCell', { n: count })
+            : t('commentsOnLine', { n: count });
+          head.appendChild(label);
+          head.appendChild(
+            iconButton('close', t('close'), () => closePopup(), 'mdr-pop-close')
+          );
+          nodes.push(head);
+          for (const member of group) {
+            const card = threadBlock(member, { grouped: true });
+            if (member.id === focusedId) {
+              focusedNode = card;
+            }
+            nodes.push(card);
+          }
+        } else {
+          nodes.push(threadBlock(thread));
+        }
       }
     }
 
-    if (!node) {
+    if (!nodes.length) {
       popEl.style.display = 'none';
       return;
     }
-    popEl.appendChild(node);
+    for (const node of nodes) {
+      popEl.appendChild(node);
+    }
     popEl.style.display = 'block';
     if (popAnchor) {
       positionPopup(popAnchor);
+    }
+    // When a specific thread of a stacked group was requested (e.g. from the
+    // inbox), make sure it is visible inside the scrollable popup.
+    if (focusedNode && popEl.scrollHeight > popEl.clientHeight) {
+      focusedNode.scrollIntoView({ block: 'nearest' });
     }
     // Intentionally not auto-focusing the textarea so the quick-reply pills are
     // immediately clickable (and the mobile keyboard doesn't pop up).
@@ -1183,11 +1258,22 @@ export function mountPreview(
     )}<span class="mdr-sel-label">${esc(t('commentLabel'))}</span></button>`;
   document.body.appendChild(selPop);
   let pendingSelection: Draft | null = null;
+  // Set while a tap/click on the popover is in flight so the debounced
+  // selectionchange handler (and iOS collapsing the selection mid-tap) can't
+  // dismiss the popover before its `click` handler runs.
+  let selPopInteracting = false;
 
   function hideSelectionPopover(): void {
+    if (selPopInteracting) {
+      return;
+    }
     selPop.style.display = 'none';
     pendingSelection = null;
   }
+
+  const isCoarsePointer = (): boolean =>
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(pointer: coarse)').matches;
 
   function selectionAnchorLine(sel: Selection): number | null {
     let node: Node | null = sel.anchorNode;
@@ -1235,25 +1321,60 @@ export function mountPreview(
     };
     const rect = range.getBoundingClientRect();
     selPop.style.display = 'flex';
-    const top = window.scrollY + rect.top - 44;
+    // Measure after making it visible so width/height reflect the real content.
+    const popW = selPop.offsetWidth || 112;
+    const popH = selPop.offsetHeight || 40;
+    // On touch (or when the selection sits near the very top) place the popover
+    // below the selection: above would collide with iOS Safari's native
+    // Copy/Look Up callout, or spill off the top of the viewport.
+    const placeBelow = isCoarsePointer() || rect.top - popH - 8 < 4;
+    const top = placeBelow
+      ? window.scrollY + rect.bottom + 8
+      : window.scrollY + rect.top - popH - 4;
     selPop.style.top = Math.max(window.scrollY + 4, top) + 'px';
-    selPop.style.left =
-      window.scrollX + rect.left + rect.width / 2 - 56 + 'px';
+    // Clamp horizontally so the popover isn't clipped on narrow phones.
+    const desiredLeft = rect.left + rect.width / 2 - popW / 2;
+    const clampedLeft = Math.max(
+      4,
+      Math.min(desiredLeft, window.innerWidth - popW - 4)
+    );
+    selPop.style.left = window.scrollX + clampedLeft + 'px';
   }
 
-  selPop.querySelector('.mdr-sel-btn')?.addEventListener('mousedown', (e) => {
-    // mousedown (not click) so the text selection isn't cleared first.
-    e.preventDefault();
-  });
-  selPop.querySelector('.mdr-sel-btn')?.addEventListener('click', () => {
+  function confirmSelectionDraft(): void {
     if (pendingSelection) {
       focusedId = null;
       draft = pendingSelection;
+      selPopInteracting = false;
       hideSelectionPopover();
       window.getSelection()?.removeAllRanges();
       renderThreads();
     }
+  }
+
+  const selBtn = selPop.querySelector('.mdr-sel-btn');
+  selBtn?.addEventListener('mousedown', (e) => {
+    // mousedown (not click) so the text selection isn't cleared first.
+    e.preventDefault();
   });
+  // On touch, mark the popover as interacting so collapsing the selection (or a
+  // debounced selectionchange) can't dismiss it before `click` lands.
+  selBtn?.addEventListener(
+    'touchstart',
+    () => {
+      selPopInteracting = true;
+    },
+    { passive: true }
+  );
+  selBtn?.addEventListener('touchend', (e) => {
+    // Confirm directly on touchend and stop the synthetic mouse/click chain so
+    // iOS can't collapse things out from under us between touchend and click.
+    e.preventDefault();
+    confirmSelectionDraft();
+    // Clear the flag even if there was nothing pending, so it can't get stuck.
+    selPopInteracting = false;
+  });
+  selBtn?.addEventListener('click', confirmSelectionDraft);
 
   contentEl.addEventListener('mouseup', () =>
     setTimeout(maybeShowSelectionPopover, 0)
@@ -1263,12 +1384,54 @@ export function mountPreview(
       setTimeout(maybeShowSelectionPopover, 0);
     }
   });
+
+  // iOS Safari / Android Chrome don't fire `mouseup` when selecting via
+  // long-press + drag of the native selection handles, so drive the popover
+  // from `selectionchange`, debounced so it settles once the user stops
+  // adjusting the handles.
+  let selChangeTimer: ReturnType<typeof setTimeout> | undefined;
+  document.addEventListener('selectionchange', () => {
+    if (selPopInteracting) {
+      return;
+    }
+    clearTimeout(selChangeTimer);
+    selChangeTimer = setTimeout(maybeShowSelectionPopover, 250);
+  });
+
   document.addEventListener('mousedown', (e) => {
     if (!selPop.contains(e.target as Node)) {
       hideSelectionPopover();
     }
   });
-  window.addEventListener('scroll', hideSelectionPopover, { passive: true });
+  document.addEventListener(
+    'touchstart',
+    (e) => {
+      if (!selPop.contains(e.target as Node)) {
+        hideSelectionPopover();
+      }
+    },
+    { passive: true }
+  );
+
+  // iOS auto-scrolls while dragging selection handles and shifts the visual
+  // viewport, so hide during the scroll then re-show (repositioned) once it
+  // settles if a valid selection still exists.
+  let scrollSettleTimer: ReturnType<typeof setTimeout> | undefined;
+  window.addEventListener(
+    'scroll',
+    () => {
+      if (selPop.style.display !== 'none') {
+        selPop.style.display = 'none';
+      }
+      clearTimeout(scrollSettleTimer);
+      scrollSettleTimer = setTimeout(() => {
+        if (!selPopInteracting) {
+          maybeShowSelectionPopover();
+        }
+      }, 200);
+    },
+    { passive: true }
+  );
 
   // --- Compact frontmatter --------------------------------------------------
   let lastPropertiesHtml = '';

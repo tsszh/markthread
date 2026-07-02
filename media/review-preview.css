@@ -791,6 +791,39 @@ body.mdr-app #mdr-preview pre:not(.mermaid) {
   color: var(--danger, #d23f3f);
 }
 
+/* Multiple threads anchored to the same line/cell: stacked cards under one
+   sticky header, so everything the gutter count advertises is reachable. */
+.mdr-thread-pop.mdr-pop-multi {
+  background: var(--bg-subtle, #f7f8fa);
+  border: 1px solid var(--border, #e4e7ec);
+  padding: 0 8px 8px;
+}
+.mdr-thread-pop.mdr-pop-multi .mdr-thread {
+  margin-top: 8px;
+  box-shadow: var(--shadow-card, 0 1px 2px rgba(16, 24, 40, 0.05));
+}
+.mdr-thread-pop.mdr-pop-multi .mdr-thread.focused {
+  box-shadow: 0 0 0 1px var(--accent, #3b6fe0);
+}
+.mdr-pop-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 -8px;
+  padding: 6px 6px 6px 12px;
+  background: var(--bg-subtle, #f7f8fa);
+  border-bottom: 1px solid var(--border, #e4e7ec);
+}
+.mdr-pop-head-label {
+  flex: 1 1 auto;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-muted, #6b7480);
+}
+
 /* --------------------------------------------------------------------------
    Thread cards (Quip style)
    -------------------------------------------------------------------------- */
