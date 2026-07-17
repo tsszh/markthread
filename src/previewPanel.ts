@@ -42,6 +42,41 @@ function getNonce(): string {
 }
 
 /**
+ * Options passed to `createWebviewPanel` for the Review Preview. Exported so
+ * tests can assert the find widget stays enabled (Ctrl/Cmd+F).
+ */
+export function buildReviewPreviewPanelOptions(
+  extensionUri: vscode.Uri,
+  document: vscode.TextDocument
+): vscode.WebviewPanelOptions & vscode.WebviewOptions {
+  return {
+    enableScripts: true,
+    enableFindWidget: true,
+    retainContextWhenHidden: true,
+    localResourceRoots: reviewPreviewResourceRoots(extensionUri, document),
+  };
+}
+
+/**
+ * Local roots the webview may load files from: the extension assets, every
+ * workspace folder, and the previewed document's own folder (covers files
+ * opened outside any workspace). Lets relative Markdown images resolve.
+ */
+function reviewPreviewResourceRoots(
+  extensionUri: vscode.Uri,
+  document: vscode.TextDocument
+): vscode.Uri[] {
+  const roots = [extensionUri];
+  for (const folder of vscode.workspace.workspaceFolders ?? []) {
+    roots.push(folder.uri);
+  }
+  if (document.uri.scheme === 'file') {
+    roots.push(vscode.Uri.joinPath(document.uri, '..'));
+  }
+  return roots;
+}
+
+/**
  * Custom Markdown review preview. Renders the active document with the shared
  * preview client in a fully-controlled webview, so comments can be authored
  * per-line and per-selection. Line-level comments stay in sync with the native
@@ -76,14 +111,7 @@ export class ReviewPreviewPanel {
       'markThreadPreview',
       'Review Preview',
       { viewColumn: column, preserveFocus: column === vscode.ViewColumn.Beside },
-      {
-        enableScripts: true,
-        retainContextWhenHidden: true,
-        localResourceRoots: ReviewPreviewPanel.resourceRoots(
-          extensionUri,
-          document
-        ),
-      }
+      buildReviewPreviewPanelOptions(extensionUri, document)
     );
 
     ReviewPreviewPanel.current = new ReviewPreviewPanel(
@@ -107,25 +135,6 @@ export class ReviewPreviewPanel {
       ) ?? (await vscode.workspace.openTextDocument(uri));
     ReviewPreviewPanel.createOrShow(extensionUri, controller, doc);
     ReviewPreviewPanel.current?.revealLine(line);
-  }
-
-  /**
-   * Local roots the webview may load files from: the extension assets, every
-   * workspace folder, and the previewed document's own folder (covers files
-   * opened outside any workspace). Lets relative Markdown images resolve.
-   */
-  private static resourceRoots(
-    extensionUri: vscode.Uri,
-    document: vscode.TextDocument
-  ): vscode.Uri[] {
-    const roots = [extensionUri];
-    for (const folder of vscode.workspace.workspaceFolders ?? []) {
-      roots.push(folder.uri);
-    }
-    if (document.uri.scheme === 'file') {
-      roots.push(vscode.Uri.joinPath(document.uri, '..'));
-    }
-    return roots;
   }
 
   private document: vscode.TextDocument;
@@ -195,7 +204,7 @@ export class ReviewPreviewPanel {
     // load its relative images.
     this.panel.webview.options = {
       enableScripts: true,
-      localResourceRoots: ReviewPreviewPanel.resourceRoots(
+      localResourceRoots: reviewPreviewResourceRoots(
         this.extensionUri,
         document
       ),

@@ -23,6 +23,7 @@ import {
   serializeReview,
   writeReview,
 } from '../../storage';
+import { buildReviewPreviewPanelOptions } from '../../previewPanel';
 
 const SAMPLE_THREADS = [
   {
@@ -167,6 +168,23 @@ suite('Reviewable Document Suite', () => {
       uri: vscode.Uri.file('/tmp/readme.md.markthread.json'),
     } as vscode.TextDocument;
     assert.strictEqual(isReviewableMarkdownDocument(fake), false);
+  });
+});
+
+suite('Review Preview Panel Options Suite', () => {
+  test('enableFindWidget is on so Ctrl/Cmd+F works in the preview', async () => {
+    const document = await vscode.workspace.openTextDocument({
+      language: 'markdown',
+      content: '# find me',
+    });
+    const extensionUri = vscode.Uri.file(path.join(__dirname, '..', '..', '..'));
+    const opts = buildReviewPreviewPanelOptions(extensionUri, document);
+
+    assert.strictEqual(opts.enableFindWidget, true);
+    assert.strictEqual(opts.enableScripts, true);
+    assert.strictEqual(opts.retainContextWhenHidden, true);
+    assert.ok(Array.isArray(opts.localResourceRoots));
+    assert.ok(opts.localResourceRoots!.length >= 1);
   });
 });
 
