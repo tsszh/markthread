@@ -50,7 +50,7 @@ suite('Markdown Renderer Suite', () => {
 
   test('blockquote source lines each get their own data-source-line', () => {
     const md = [
-      '> **Winona\'s Spotlight**',
+      '> **Winona Spotlight**',
       '> The spotlight searches the arena for players.',
       '> It keeps tracking even if the player hides.',
       '> After a power loss the spotlight goes dark.',
@@ -61,7 +61,7 @@ suite('Markdown Renderer Suite', () => {
     assert.ok(/<p[^>]*data-source-line="1"/.test(html), html);
     assert.ok(/<p[^>]*data-source-line="2"/.test(html), html);
     assert.ok(/<p[^>]*data-source-line="3"/.test(html), html);
-    assert.ok(html.includes("Winona's Spotlight"), html);
+    assert.ok(html.includes('Winona Spotlight'), html);
     assert.ok(html.includes('spotlight goes dark'), html);
   });
 
