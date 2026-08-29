@@ -65,6 +65,15 @@ suite('Markdown Renderer Suite', () => {
     assert.ok(html.includes('spotlight goes dark'), html);
   });
 
+  test('blockquote keeps emphasis that spans quoted source lines', () => {
+    const md = '> *emphasized\n> text*\n';
+    const { html } = renderMarkdown(md);
+    assert.ok(html.includes('<em>'), html);
+    assert.ok(!html.includes('*emphasized'), html);
+    assert.ok(/<p[^>]*data-source-line="0"/.test(html), html);
+    assert.ok(/<p[^>]*data-source-line="1"/.test(html), html);
+  });
+
   test('GitHub alert title and body lines are independently commentable', () => {
     const md = [
       '> [!CAUTION] Winona\'s Spotlight',

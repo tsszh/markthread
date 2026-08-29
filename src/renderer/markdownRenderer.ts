@@ -39,11 +39,10 @@ function createMd(): { md: MarkdownIt; getFrontMatter: () => string } {
     frontMatterRaw = fm;
   });
 
-  // Split multi-line paragraphs inside blockquotes *before* GitHub alerts
-  // rewrite the wrapper, so each original `>` source line is its own
-  // commentable <p>. Registered after('block') once alerts is already in
-  // the chain, which inserts this rule *between* block and github-alerts.
-  md.core.ruler.after('block', 'split_quote_paragraphs', (state): boolean => {
+  // After inline parsing, split multi-line quote/alert paragraphs at
+  // soft/hard breaks while *carrying* open markup across the split so
+  // `> *foo` / `> bar*` stays emphasis instead of literal asterisks.
+  md.core.ruler.after('inline', 'split_quote_paragraphs', (state): boolean => {
     splitMultilineQuoteParagraphs(state as CoreState);
     return false;
   });
@@ -234,11 +233,82 @@ function stripQuotePrefix(line: string, depth: number): string {
   return rest;
 }
 
+function cloneToken(state: CoreState, src: Token): Token {
+  const token = new state.Token(src.type, src.tag, src.nesting);
+  token.attrs = src.attrs
+    ? src.attrs.map((attr) => [attr[0], attr[1]] as [string, string])
+    : null;
+  token.markup = src.markup;
+  token.content = src.content;
+  token.info = src.info;
+  token.meta = src.meta;
+  token.block = src.block;
+  token.level = src.level;
+  token.children = src.children;
+  return token;
+}
+
+function matchingClose(state: CoreState, open: Token): Token {
+  const type = open.type.endsWith('_open')
+    ? `${open.type.slice(0, -5)}_close`
+    : open.type;
+  const token = new state.Token(type, open.tag, -1);
+  token.markup = open.markup;
+  token.level = open.level;
+  return token;
+}
+
 /**
- * Consecutive `>` lines without a blank line become one markdown-it paragraph,
- * so the preview can only comment the first source line. Split those
- * paragraphs (direct children of a quote/alert, not list items) into one
- * paragraph per source line — matching how ordinary body paragraphs work.
+ * Split already-parsed inline children on soft/hard breaks, reopening any
+ * still-open markup on the next line so emphasis/links that span `>` lines
+ * stay valid HTML instead of unmatched delimiters.
+ */
+function segmentsFromInline(state: CoreState, children: Token[] | null): Token[][] {
+  const segments: Token[][] = [[]];
+  const stack: Token[] = [];
+  for (const child of children ?? []) {
+    if (child.type === 'softbreak' || child.type === 'hardbreak') {
+      const current = segments[segments.length - 1];
+      for (let i = stack.length - 1; i >= 0; i--) {
+        current.push(matchingClose(state, stack[i]));
+      }
+      segments.push(stack.map((open) => cloneToken(state, open)));
+      continue;
+    }
+    segments[segments.length - 1].push(child);
+    if (child.nesting === 1) {
+      stack.push(child);
+    } else if (child.nesting === -1 && stack.length > 0) {
+      stack.pop();
+    }
+  }
+  return segments;
+}
+
+function contentSourceLines(
+  srcLines: string[],
+  start: number,
+  end: number,
+  depth: number,
+  skipFirst: boolean,
+  count: number
+): number[] {
+  const out: number[] = [];
+  for (let i = start + (skipFirst ? 1 : 0); i < end && out.length < count; i++) {
+    if (stripQuotePrefix(srcLines[i] ?? '', depth).trim()) {
+      out.push(i);
+    }
+  }
+  while (out.length < count) {
+    out.push(out[out.length - 1] ?? start);
+  }
+  return out;
+}
+
+/**
+ * Consecutive `>` lines without a blank line become one markdown-it paragraph.
+ * After inline parsing, split that paragraph at line breaks (carrying open
+ * tags) so each source line is commentable without re-lexing the delimiters.
  */
 function splitMultilineQuoteParagraphs(state: CoreState): void {
   const srcLines = state.src.split(/\r?\n/);
@@ -246,16 +316,19 @@ function splitMultilineQuoteParagraphs(state: CoreState): void {
   const out: Token[] = [];
   let quoteDepth = 0;
   let listDepth = 0;
+  let skipAlertMarkerLine = false;
 
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
     if (token.type === 'blockquote_open' || token.type === 'alert_open') {
       quoteDepth += 1;
+      skipAlertMarkerLine = token.type === 'alert_open';
       out.push(token);
       continue;
     }
     if (token.type === 'blockquote_close' || token.type === 'alert_close') {
       quoteDepth -= 1;
+      skipAlertMarkerLine = false;
       out.push(token);
       continue;
     }
@@ -272,6 +345,10 @@ function splitMultilineQuoteParagraphs(state: CoreState): void {
 
     const inline = tokens[i + 1];
     const close = tokens[i + 2];
+    const skipFirst = skipAlertMarkerLine;
+    if (token.type === 'paragraph_open') {
+      skipAlertMarkerLine = false;
+    }
     if (
       quoteDepth > 0 &&
       listDepth === 0 &&
@@ -281,20 +358,25 @@ function splitMultilineQuoteParagraphs(state: CoreState): void {
       inline?.type === 'inline' &&
       close?.type === 'paragraph_close'
     ) {
-      const [start, end] = token.map;
-      for (let line = start; line < end; line++) {
-        const content = stripQuotePrefix(srcLines[line] ?? '', quoteDepth);
-        if (!content.trim()) {
-          continue;
-        }
+      const segments = segmentsFromInline(state, inline.children);
+      const lines = contentSourceLines(
+        srcLines,
+        token.map[0],
+        token.map[1],
+        quoteDepth,
+        skipFirst,
+        segments.length
+      );
+      for (let s = 0; s < segments.length; s++) {
+        const line = lines[s];
         const open = new state.Token('paragraph_open', 'p', 1);
         open.map = [line, line + 1];
         open.block = true;
         open.level = token.level;
         const inlineTok = new state.Token('inline', '', 0);
-        inlineTok.content = content;
         inlineTok.map = [line, line + 1];
-        inlineTok.children = [];
+        inlineTok.children = segments[s];
+        inlineTok.content = '';
         inlineTok.level = inline.level;
         const closeTok = new state.Token('paragraph_close', 'p', -1);
         closeTok.block = true;
