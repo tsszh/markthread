@@ -111,8 +111,10 @@ suite('Markdown Renderer Suite', () => {
       !/<span class="md-code-line"[^>]*data-source-line="0"/.test(html),
       html
     );
-    assert.ok(html.includes('const a = 1;'), html);
-    assert.ok(html.includes('const c = 3;'), html);
+    // highlight.js wraps tokens, so the raw `const a = 1;` string is not contiguous.
+    assert.ok(html.includes('hljs-keyword'), html);
+    assert.ok(html.includes('a ='), html);
+    assert.ok(html.includes('c ='), html);
   });
 
   test('fenced code line numbers follow the document source', () => {
