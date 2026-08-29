@@ -53,6 +53,57 @@ function createMd(): { md: MarkdownIt; getFrontMatter: () => string } {
     frontMatterRaw = fm;
   });
 
+  // Split multi-line paragraphs inside blockquotes *before* GitHub alerts
+  // rewrite the wrapper, so each original `>` source line is its own
+  // commentable <p>. Registered after('block') once alerts is already in
+  // the chain, which inserts this rule *between* block and github-alerts.
+  md.core.ruler.after('block', 'split_quote_paragraphs', (state): boolean => {
+    splitMultilineQuoteParagraphs(state as CoreState);
+    return false;
+  });
+
+  // `[!NOTE]` (and optional custom title) lived on its own source line; after
+  // the split + alerts transform that line's paragraph is empty — drop it so
+  // the injected `.markdown-alert-title` is the comment target for that line.
+  md.core.ruler.after('github-alerts', 'trim_alert_empty_intro', (state): boolean => {
+    const tokens = state.tokens as Token[];
+    for (let i = 0; i < tokens.length; i++) {
+      if (tokens[i].type !== 'alert_open') {
+        continue;
+      }
+      const open = tokens[i + 1];
+      const inline = tokens[i + 2];
+      const close = tokens[i + 3];
+      if (
+        open?.type === 'paragraph_open' &&
+        inline?.type === 'inline' &&
+        close?.type === 'paragraph_close' &&
+        !inline.content.trim()
+      ) {
+        tokens.splice(i + 1, 3);
+      }
+    }
+    return false;
+  });
+
+  // The plugin's default alert_open renderer drops token attrs (so the
+  // wrapper has no data-source-line) and the title <p> is raw HTML. Restore
+  // both so the title is a commentable leaf and the wrapper is a container.
+  md.renderer.rules.alert_open = (tokens, idx) => {
+    const token = tokens[idx];
+    const meta = (token.meta ?? {}) as {
+      title?: string;
+      type?: string;
+      icon?: string;
+    };
+    const title = meta.title ?? '';
+    const type = meta.type ?? 'note';
+    const icon = meta.icon ?? '';
+    const attrs = md.renderer.renderAttrs(token);
+    const titleLine = token.map ? token.map[0] : 0;
+    return `<div class="markdown-alert markdown-alert-${type}"${attrs}><p class="markdown-alert-title" data-source-line="${titleLine}" data-source-end="${titleLine + 1}">${icon}${title}</p>`;
+  };
+
   // Annotate block-level tokens with their source line range so the preview
   // client can attach per-line comment affordances. Mirrors VS Code's own
   // `data-line` scheme used for scroll sync.
@@ -110,6 +161,100 @@ function createMd(): { md: MarkdownIt; getFrontMatter: () => string } {
   };
 
   return { md, getFrontMatter: () => frontMatterRaw };
+}
+
+interface CoreState {
+  tokens: Token[];
+  src: string;
+  Token: new (type: string, tag: string, nesting: number) => Token;
+}
+
+/** Strip `depth` CommonMark blockquote markers (`>` plus optional space). */
+function stripQuotePrefix(line: string, depth: number): string {
+  let rest = line.replace(/\r$/, '');
+  for (let d = 0; d < depth; d++) {
+    const match = /^ {0,3}> ?/.exec(rest);
+    if (!match) {
+      break;
+    }
+    rest = rest.slice(match[0].length);
+  }
+  return rest;
+}
+
+/**
+ * Consecutive `>` lines without a blank line become one markdown-it paragraph,
+ * so the preview can only comment the first source line. Split those
+ * paragraphs (direct children of a quote/alert, not list items) into one
+ * paragraph per source line — matching how ordinary body paragraphs work.
+ */
+function splitMultilineQuoteParagraphs(state: CoreState): void {
+  const srcLines = state.src.split(/\r?\n/);
+  const tokens = state.tokens;
+  const out: Token[] = [];
+  let quoteDepth = 0;
+  let listDepth = 0;
+
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
+    if (token.type === 'blockquote_open' || token.type === 'alert_open') {
+      quoteDepth += 1;
+      out.push(token);
+      continue;
+    }
+    if (token.type === 'blockquote_close' || token.type === 'alert_close') {
+      quoteDepth -= 1;
+      out.push(token);
+      continue;
+    }
+    if (token.type === 'bullet_list_open' || token.type === 'ordered_list_open') {
+      listDepth += 1;
+      out.push(token);
+      continue;
+    }
+    if (token.type === 'bullet_list_close' || token.type === 'ordered_list_close') {
+      listDepth -= 1;
+      out.push(token);
+      continue;
+    }
+
+    const inline = tokens[i + 1];
+    const close = tokens[i + 2];
+    if (
+      quoteDepth > 0 &&
+      listDepth === 0 &&
+      token.type === 'paragraph_open' &&
+      token.map &&
+      token.map[1] - token.map[0] > 1 &&
+      inline?.type === 'inline' &&
+      close?.type === 'paragraph_close'
+    ) {
+      const [start, end] = token.map;
+      for (let line = start; line < end; line++) {
+        const content = stripQuotePrefix(srcLines[line] ?? '', quoteDepth);
+        if (!content.trim()) {
+          continue;
+        }
+        const open = new state.Token('paragraph_open', 'p', 1);
+        open.map = [line, line + 1];
+        open.block = true;
+        open.level = token.level;
+        const inlineTok = new state.Token('inline', '', 0);
+        inlineTok.content = content;
+        inlineTok.map = [line, line + 1];
+        inlineTok.children = [];
+        inlineTok.level = inline.level;
+        const closeTok = new state.Token('paragraph_close', 'p', -1);
+        closeTok.block = true;
+        closeTok.level = close.level;
+        out.push(open, inlineTok, closeTok);
+      }
+      i += 2;
+      continue;
+    }
+    out.push(token);
+  }
+  state.tokens = out;
 }
 
 // The raw fence body is stashed in a hidden <pre> so it survives HTML escaping

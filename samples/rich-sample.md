@@ -90,9 +90,12 @@ And a deeply nested relative file path:
 
 ## Blockquote
 
-> A plain blockquote for emphasis or citations.
+> **Winona's Spotlight**
+> The spotlight searches the arena for players and follows once it finds one.
+> It keeps tracking even if the player hides.
+> After a power loss the spotlight goes dark.
 >
-> It can span multiple paragraphs.
+> A blank-line paragraph inside the same quote is still its own comment target.
 
 ## Alerts
 

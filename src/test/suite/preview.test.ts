@@ -47,6 +47,41 @@ suite('Markdown Renderer Suite', () => {
     assert.ok(html.includes('hljs'));
     assert.ok(!html.includes('echarts-chart'));
   });
+
+  test('blockquote source lines each get their own data-source-line', () => {
+    const md = [
+      '> **Winona\'s Spotlight**',
+      '> The spotlight searches the arena for players.',
+      '> It keeps tracking even if the player hides.',
+      '> After a power loss the spotlight goes dark.',
+      '',
+    ].join('\n');
+    const { html } = renderMarkdown(md);
+    assert.ok(/<p[^>]*data-source-line="0"/.test(html), html);
+    assert.ok(/<p[^>]*data-source-line="1"/.test(html), html);
+    assert.ok(/<p[^>]*data-source-line="2"/.test(html), html);
+    assert.ok(/<p[^>]*data-source-line="3"/.test(html), html);
+    assert.ok(html.includes("Winona's Spotlight"), html);
+    assert.ok(html.includes('spotlight goes dark'), html);
+  });
+
+  test('GitHub alert title and body lines are independently commentable', () => {
+    const md = [
+      '> [!CAUTION] Winona\'s Spotlight',
+      '> The spotlight searches the arena for players.',
+      '> After a power loss the spotlight goes dark.',
+      '',
+    ].join('\n');
+    const { html } = renderMarkdown(md);
+    assert.ok(
+      /<p class="markdown-alert-title"[^>]*data-source-line="0"/.test(html),
+      html
+    );
+    assert.ok(/<p[^>]*data-source-line="1"/.test(html), html);
+    assert.ok(/<p[^>]*data-source-line="2"/.test(html), html);
+    assert.ok(html.includes("Winona's Spotlight"), html);
+    assert.ok(html.includes('spotlight goes dark'), html);
+  });
 });
 
 suite('Charts Suite', () => {
