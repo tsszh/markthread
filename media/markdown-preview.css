@@ -704,6 +704,13 @@ pre:not(.mermaid) code {
   font-size: 0.85rem !important;
 }
 
+/* One commentable row per Markdown source line inside a code block. */
+.md-code-line {
+  display: block;
+  position: relative;
+  min-height: 1.6em;
+}
+
 /* Syntax highlighting tokens.
    Highlight.js is the highlighter used by both the VS Code built-in Markdown
    preview and our local preview server (markdown-it `highlight` option), so the

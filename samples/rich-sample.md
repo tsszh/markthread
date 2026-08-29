@@ -120,6 +120,10 @@ And a deeply nested relative file path:
 function greet(name: string): string {
   return `Hello, ${name}!`;
 }
+
+function farewell(name: string): string {
+  return `Goodbye, ${name}!`;
+}
 ```
 
 ## ECharts

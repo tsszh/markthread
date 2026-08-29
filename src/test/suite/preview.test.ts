@@ -82,6 +82,72 @@ suite('Markdown Renderer Suite', () => {
     assert.ok(html.includes("Winona's Spotlight"), html);
     assert.ok(html.includes('spotlight goes dark'), html);
   });
+
+  test('fenced code lines map to content source lines, not the opening fence', () => {
+    const md = [
+      '```js',
+      'const a = 1;',
+      'const b = 2;',
+      'const c = 3;',
+      '```',
+      '',
+    ].join('\n');
+    const { html } = renderMarkdown(md);
+    assert.ok(html.includes('md-code-line'), html);
+    assert.ok(
+      /<span class="md-code-line"[^>]*data-source-line="1"/.test(html),
+      html
+    );
+    assert.ok(
+      /<span class="md-code-line"[^>]*data-source-line="2"/.test(html),
+      html
+    );
+    assert.ok(
+      /<span class="md-code-line"[^>]*data-source-line="3"/.test(html),
+      html
+    );
+    // Opening fence is source line 0 and must not steal comments from line 1.
+    assert.ok(
+      !/<span class="md-code-line"[^>]*data-source-line="0"/.test(html),
+      html
+    );
+    assert.ok(html.includes('const a = 1;'), html);
+    assert.ok(html.includes('const c = 3;'), html);
+  });
+
+  test('fenced code line numbers follow the document source', () => {
+    const md = '# Title\n\n```js\nconst a = 1;\nconst b = 2;\n```\n';
+    const { html } = renderMarkdown(md);
+    // `# Title` is line 0, blank 1, opening fence 2, first code line 3.
+    assert.ok(
+      /<span class="md-code-line"[^>]*data-source-line="3"/.test(html),
+      html
+    );
+    assert.ok(
+      /<span class="md-code-line"[^>]*data-source-line="4"/.test(html),
+      html
+    );
+  });
+
+  test('blockquote line numbers follow the document source', () => {
+    const md = '# Title\n\n> alpha\n> beta\n';
+    const { html } = renderMarkdown(md);
+    assert.ok(/<p[^>]*data-source-line="2"/.test(html), html);
+    assert.ok(/<p[^>]*data-source-line="3"/.test(html), html);
+  });
+
+  test('indented code lines keep their own source line numbers', () => {
+    const md = '    const a = 1;\n    const b = 2;\n';
+    const { html } = renderMarkdown(md);
+    assert.ok(
+      /<span class="md-code-line"[^>]*data-source-line="0"/.test(html),
+      html
+    );
+    assert.ok(
+      /<span class="md-code-line"[^>]*data-source-line="1"/.test(html),
+      html
+    );
+  });
 });
 
 suite('Charts Suite', () => {

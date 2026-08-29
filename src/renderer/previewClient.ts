@@ -77,6 +77,7 @@ const CONTAINER_TAGS = new Set([
   'TR',
   'DL',
   'BLOCKQUOTE',
+  'PRE',
 ]);
 
 function isCommentContainer(el: HTMLElement): boolean {
@@ -1083,9 +1084,15 @@ export function mountPreview(
   function showAddButtonFor(block: HTMLElement): void {
     hoverLine = Number(block.getAttribute('data-source-line'));
     const rect = block.getBoundingClientRect();
+    // Code-line spans sit inside a padded <pre>; pin the button to the pre's
+    // left edge so it stays in the gutter even when the line is indented.
+    const host = block.classList.contains('md-code-line')
+      ? (block.closest('pre') ?? block)
+      : block;
+    const leftRect = host.getBoundingClientRect();
     addBtn.style.display = 'flex';
     addBtn.style.top = window.scrollY + rect.top + 'px';
-    addBtn.style.left = Math.max(2, window.scrollX + rect.left - 34) + 'px';
+    addBtn.style.left = Math.max(2, window.scrollX + leftRect.left - 34) + 'px';
   }
 
   function scheduleHideAddButton(): void {

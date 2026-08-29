@@ -1087,6 +1087,11 @@ body.mdr-app #mdr-preview pre:not(.mermaid) {
   color: var(--tone-green-fg);
   border-color: var(--tone-green-bd);
 }
+/* Keep per-line markers inside the code block padding (overflow:auto clips
+   the usual hanging gutter). */
+pre .md-code-line > .mdr-gutter {
+  left: 0.1rem;
+}
 .mdr-line-focus {
   background: var(--accent-soft, #eaf0fd) !important;
   border-radius: 4px;

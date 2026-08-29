@@ -30,21 +30,7 @@ function createMd(): { md: MarkdownIt; getFrontMatter: () => string } {
     html: true,
     linkify: true,
     typographer: true,
-    highlight: (str: string, lang: string): string => {
-      const escaped = md.utils.escapeHtml(str);
-      if (lang && hljs.getLanguage(lang)) {
-        try {
-          const out = hljs.highlight(str, {
-            language: lang,
-            ignoreIllegals: true,
-          }).value;
-          return `<pre class="hljs"><code class="hljs language-${lang}">${out}</code></pre>`;
-        } catch {
-          /* fall through to plain escaped output */
-        }
-      }
-      return `<pre class="hljs"><code class="hljs">${escaped}</code></pre>`;
-    },
+    highlight: (str: string, lang: string): string => highlightInner(str, lang, md),
   });
 
   md.use(markdownItGithubAlerts);
@@ -130,19 +116,17 @@ function createMd(): { md: MarkdownIt; getFrontMatter: () => string } {
   }
 
   // Custom fences: charts and diagrams become client-rendered containers.
-  const defaultFence =
-    md.renderer.rules.fence?.bind(md.renderer.rules) ??
-    ((tokens, idx, options, _env, self) =>
-      self.renderToken(tokens, idx, options));
-
-  md.renderer.rules.fence = (tokens, idx, options, env, self) => {
+  // Regular (and indented) code is split into per-source-line spans so each
+  // line can be commented independently with the correct Line N.
+  md.renderer.rules.fence = (tokens, idx) => {
     const token = tokens[idx];
     const info = token.info.trim().toLowerCase();
+    const lang = info.split(/\s+/)[0] ?? '';
     const lineAttrs = token.map
       ? ` data-source-line="${token.map[0]}" data-source-end="${token.map[1]}"`
       : '';
 
-    if (info === 'mermaid') {
+    if (lang === 'mermaid') {
       // Wrap the diagram so the per-line comment marker anchors to the wrapper,
       // not the <pre> Mermaid renders from. Mermaid reads the element's
       // textContent asynchronously, so a marker appended directly into the
@@ -151,16 +135,84 @@ function createMd(): { md: MarkdownIt; getFrontMatter: () => string } {
         token.content
       )}</pre></div>\n`;
     }
-    if (info === 'echarts') {
+    if (lang === 'echarts') {
       return chartContainer('echarts-chart', token.content, lineAttrs, md);
     }
-    if (info === 'chart') {
+    if (lang === 'chart') {
       return chartContainer('obsidian-chart', token.content, lineAttrs, md);
     }
-    return defaultFence(tokens, idx, options, env, self);
+    return renderLineCommentableCode(token, lang, md, 'fence');
   };
 
+  md.renderer.rules.code_block = (tokens, idx) =>
+    renderLineCommentableCode(tokens[idx], '', md, 'indented');
+
   return { md, getFrontMatter: () => frontMatterRaw };
+}
+
+/** Inner highlighted HTML only — never a wrapping <pre>, so token attrs survive. */
+function highlightInner(src: string, lang: string, md: MarkdownIt): string {
+  if (lang && hljs.getLanguage(lang)) {
+    try {
+      return hljs.highlight(src, { language: lang, ignoreIllegals: true }).value;
+    } catch {
+      /* fall through to plain escaped output */
+    }
+  }
+  return md.utils.escapeHtml(src);
+}
+
+/**
+ * Wrap each highlighted line in a leaf `span.md-code-line` whose
+ * `data-source-line` is the matching Markdown source line (not the opening
+ * fence). highlight.js may open a <span> on one line and close it on another;
+ * carry those tags across so the HTML stays balanced.
+ */
+function wrapCodeLines(highlightedHtml: string, firstLine: number): string {
+  const lines = highlightedHtml.split('\n');
+  if (lines.length > 0 && lines[lines.length - 1] === '') {
+    lines.pop();
+  }
+  const stack: string[] = [];
+  const tagRe = /<\/?span\b[^>]*>/gi;
+  return lines
+    .map((line, i) => {
+      const reopen = stack.join('');
+      tagRe.lastIndex = 0;
+      let match: RegExpExecArray | null;
+      while ((match = tagRe.exec(line))) {
+        if (match[0].startsWith('</')) {
+          stack.pop();
+        } else {
+          stack.push(match[0]);
+        }
+      }
+      const close = stack.map(() => '</span>').join('');
+      const n = firstLine + i;
+      return `<span class="md-code-line" data-source-line="${n}" data-source-end="${n + 1}">${reopen}${line}${close}</span>`;
+    })
+    .join('');
+}
+
+function renderLineCommentableCode(
+  token: Token,
+  lang: string,
+  md: MarkdownIt,
+  kind: 'fence' | 'indented'
+): string {
+  const highlighted = highlightInner(token.content, lang, md);
+  const firstContentLine =
+    token.map != null
+      ? kind === 'fence'
+        ? token.map[0] + 1
+        : token.map[0]
+      : 0;
+  const linesHtml = wrapCodeLines(highlighted, firstContentLine);
+  const attrs = md.renderer.renderAttrs(token);
+  const langClass = lang
+    ? ` language-${md.utils.escapeHtml(lang)}`
+    : '';
+  return `<pre class="hljs"${attrs}><code class="hljs${langClass}">${linesHtml}</code></pre>\n`;
 }
 
 interface CoreState {
