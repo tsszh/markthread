@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.35
+
+- **Per-line comments in blockquotes, GitHub alerts, and code blocks.** Hovering a quote/alert now offers the add-comment button on the title and every following source line (not only the first). Fenced and indented code is the same: each content line is independently commentable, and the **L{n}** label matches the Markdown source line rather than the opening fence. Emphasis that spans quoted lines stays italics instead of turning into literal asterisks. Code-line comment markers sit in reserved padding so they do not cover the first characters.
+
 ## 0.1.34
 
 - **Long URLs and file paths no longer overflow the page.** Inline code and prose now wrap unbreakable strings (URLs, Windows/Unix paths) instead of forcing horizontal scroll, while short tokens still stay on one line. Code blocks keep their own internal horizontal scroll. Applies to the VS Code preview, the custom webview, and the standalone web app.
