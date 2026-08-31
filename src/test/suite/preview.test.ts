@@ -47,6 +47,118 @@ suite('Markdown Renderer Suite', () => {
     assert.ok(html.includes('hljs'));
     assert.ok(!html.includes('echarts-chart'));
   });
+
+  test('blockquote source lines each get their own data-source-line', () => {
+    const md = [
+      '> **Winona Spotlight**',
+      '> The spotlight searches the arena for players.',
+      '> It keeps tracking even if the player hides.',
+      '> After a power loss the spotlight goes dark.',
+      '',
+    ].join('\n');
+    const { html } = renderMarkdown(md);
+    assert.ok(/<p[^>]*data-source-line="0"/.test(html), html);
+    assert.ok(/<p[^>]*data-source-line="1"/.test(html), html);
+    assert.ok(/<p[^>]*data-source-line="2"/.test(html), html);
+    assert.ok(/<p[^>]*data-source-line="3"/.test(html), html);
+    assert.ok(html.includes('Winona Spotlight'), html);
+    assert.ok(html.includes('spotlight goes dark'), html);
+  });
+
+  test('blockquote keeps emphasis that spans quoted source lines', () => {
+    const md = '> *emphasized\n> text*\n';
+    const { html } = renderMarkdown(md);
+    assert.ok(html.includes('<em>'), html);
+    assert.ok(!html.includes('*emphasized'), html);
+    assert.ok(/<p[^>]*data-source-line="0"/.test(html), html);
+    assert.ok(/<p[^>]*data-source-line="1"/.test(html), html);
+  });
+
+  test('GitHub alert title and body lines are independently commentable', () => {
+    const md = [
+      '> [!CAUTION] Winona\'s Spotlight',
+      '> The spotlight searches the arena for players.',
+      '> After a power loss the spotlight goes dark.',
+      '',
+    ].join('\n');
+    const { html } = renderMarkdown(md);
+    assert.ok(
+      /<p class="markdown-alert-title"[^>]*data-source-line="0"/.test(html),
+      html
+    );
+    assert.ok(/<p[^>]*data-source-line="1"/.test(html), html);
+    assert.ok(/<p[^>]*data-source-line="2"/.test(html), html);
+    assert.ok(html.includes("Winona's Spotlight"), html);
+    assert.ok(html.includes('spotlight goes dark'), html);
+  });
+
+  test('fenced code lines map to content source lines, not the opening fence', () => {
+    const md = [
+      '```js',
+      'const a = 1;',
+      'const b = 2;',
+      'const c = 3;',
+      '```',
+      '',
+    ].join('\n');
+    const { html } = renderMarkdown(md);
+    assert.ok(html.includes('md-code-line'), html);
+    assert.ok(
+      /<span class="md-code-line"[^>]*data-source-line="1"/.test(html),
+      html
+    );
+    assert.ok(
+      /<span class="md-code-line"[^>]*data-source-line="2"/.test(html),
+      html
+    );
+    assert.ok(
+      /<span class="md-code-line"[^>]*data-source-line="3"/.test(html),
+      html
+    );
+    // Opening fence is source line 0 and must not steal comments from line 1.
+    assert.ok(
+      !/<span class="md-code-line"[^>]*data-source-line="0"/.test(html),
+      html
+    );
+    // highlight.js wraps tokens, so the raw `const a = 1;` string is not contiguous.
+    assert.ok(html.includes('hljs-keyword'), html);
+    assert.ok(html.includes('a ='), html);
+    assert.ok(html.includes('c ='), html);
+  });
+
+  test('fenced code line numbers follow the document source', () => {
+    const md = '# Title\n\n```js\nconst a = 1;\nconst b = 2;\n```\n';
+    const { html } = renderMarkdown(md);
+    // `# Title` is line 0, blank 1, opening fence 2, first code line 3.
+    assert.ok(
+      /<span class="md-code-line"[^>]*data-source-line="3"/.test(html),
+      html
+    );
+    assert.ok(
+      /<span class="md-code-line"[^>]*data-source-line="4"/.test(html),
+      html
+    );
+  });
+
+  test('blockquote line numbers follow the document source', () => {
+    const md = '# Title\n\n> alpha\n> beta\n';
+    const { html } = renderMarkdown(md);
+    assert.ok(/<p[^>]*data-source-line="2"/.test(html), html);
+    assert.ok(/<p[^>]*data-source-line="3"/.test(html), html);
+  });
+
+  test('indented code lines keep their own source line numbers', () => {
+    const md = '    const a = 1;\n    const b = 2;\n';
+    const { html } = renderMarkdown(md);
+    assert.ok(
+      /<span class="md-code-line"[^>]*data-source-line="0"/.test(html),
+      html
+    );
+    assert.ok(
+      /<span class="md-code-line"[^>]*data-source-line="1"/.test(html),
+      html
+    );
+  });
 });
 
 suite('Charts Suite', () => {

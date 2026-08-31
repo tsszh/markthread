@@ -704,6 +704,16 @@ pre:not(.mermaid) code {
   font-size: 0.85rem !important;
 }
 
+/* One commentable row per Markdown source line inside a code block.
+   Padding reserves a column for the gutter pill so it never covers glyphs
+   (`overflow: auto` on <pre> would clip a hanging negative-left marker). */
+.md-code-line {
+  display: block;
+  position: relative;
+  min-height: 1.6em;
+  padding-left: 1.85rem;
+}
+
 /* Syntax highlighting tokens.
    Highlight.js is the highlighter used by both the VS Code built-in Markdown
    preview and our local preview server (markdown-it `highlight` option), so the

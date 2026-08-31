@@ -65,8 +65,9 @@ type Filter = 'all' | 'open' | 'resolved' | 'mine';
 type PanelTab = 'inbox' | 'outline';
 
 // Block elements that merely *contain* other commentable blocks (list/table
-// wrappers, quotes). We never attach the per-line comment button to these, so a
-// list or table can only be commented on per item/row — not as a whole.
+// wrappers, quotes, GitHub alerts). We never attach the per-line comment
+// button to these, so a list, table, quote, or alert can only be commented
+// on per item/row/line — not as a whole.
 const CONTAINER_TAGS = new Set([
   'UL',
   'OL',
@@ -76,7 +77,17 @@ const CONTAINER_TAGS = new Set([
   'TR',
   'DL',
   'BLOCKQUOTE',
+  'PRE',
 ]);
+
+function isCommentContainer(el: HTMLElement): boolean {
+  if (CONTAINER_TAGS.has(el.tagName)) {
+    return true;
+  }
+  return (
+    el.classList.contains('markdown-alert') || el.classList.contains('callout')
+  );
+}
 
 const ICON_PATHS: Record<string, string> = {
   close: 'M6 6l12 12M18 6L6 18',
@@ -209,7 +220,7 @@ export function mountPreview(
   function exactAnchor(line: number): HTMLElement | null {
     const nodes = Array.from(
       contentEl.querySelectorAll<HTMLElement>('[data-source-line]')
-    ).filter((n) => !CONTAINER_TAGS.has(n.tagName));
+    ).filter((n) => !isCommentContainer(n));
     let best: HTMLElement | null = null;
     let bestLine = -1;
     for (const node of nodes) {
@@ -1073,9 +1084,15 @@ export function mountPreview(
   function showAddButtonFor(block: HTMLElement): void {
     hoverLine = Number(block.getAttribute('data-source-line'));
     const rect = block.getBoundingClientRect();
+    // Code-line spans sit inside a padded <pre>; pin the button to the pre's
+    // left edge so it stays in the gutter even when the line is indented.
+    const host = block.classList.contains('md-code-line')
+      ? (block.closest('pre') ?? block)
+      : block;
+    const leftRect = host.getBoundingClientRect();
     addBtn.style.display = 'flex';
     addBtn.style.top = window.scrollY + rect.top + 'px';
-    addBtn.style.left = Math.max(2, window.scrollX + rect.left - 34) + 'px';
+    addBtn.style.left = Math.max(2, window.scrollX + leftRect.left - 34) + 'px';
   }
 
   function scheduleHideAddButton(): void {
@@ -1090,7 +1107,7 @@ export function mountPreview(
       return null;
     }
     const block = target.closest<HTMLElement>('[data-source-line]');
-    if (!block || !contentEl.contains(block) || CONTAINER_TAGS.has(block.tagName)) {
+    if (!block || !contentEl.contains(block) || isCommentContainer(block)) {
       return null;
     }
     // Lines that already have a comment use their gutter marker to re-open it,
